@@ -1,0 +1,7 @@
+{
+  "name": "IEEE MANAGER",
+  "description": "Enterprise-grade financial management suite for IEEE Student Branches, featuring AI auditing, Vault cloud synchronization, and multi-society ledger management.",
+  "requestFramePermissions": [
+    "geolocation"
+  ]
+}
