@@ -1,7 +1,12 @@
 
 export enum UserRole {
-  ADMIN = 'ADMIN',
-  OFFICE_BEARER = 'OFFICE_BEARER'
+  SUPER_ADMIN = 'SUPER_ADMIN',
+  SB_TREASURER = 'SB_TREASURER',
+  SOCIETY_ADMIN = 'SOCIETY_ADMIN',
+  VIEWER = 'VIEWER',
+  // Legacy aliases for backward compatibility during migration
+  ADMIN = 'SUPER_ADMIN',
+  OFFICE_BEARER = 'SOCIETY_ADMIN',
 }
 
 export interface User {

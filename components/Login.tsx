@@ -1,44 +1,27 @@
 
 import React, { useState } from 'react';
-import { User } from '../types';
-import { MOCK_USERS } from '../constants';
+import { useAuth } from '../context/AuthContext';
 
-interface LoginProps {
-  onLogin: (user: User) => void;
-}
-
-const Login: React.FC<LoginProps> = ({ onLogin }) => {
+const Login: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const { login } = useAuth();
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Attempt to load current user list from localStorage to reflect password resets
-    let userList = MOCK_USERS;
-    const saved = localStorage.getItem('ieee_finance_data');
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        if (parsed.users && parsed.users.length > 0) {
-          // Merge logic: existing persisted users + new static users (Deans/Directors) if missing
-          const persistedUsers = parsed.users;
-          const existingIds = new Set(persistedUsers.map((u: any) => u.id));
-          const missingStaticUsers = MOCK_USERS.filter(u => !existingIds.has(u.id));
-          
-          userList = [...persistedUsers, ...missingStaticUsers];
-        }
-      } catch (err) {}
-    }
+    setError('');
+    setIsLoading(true);
 
-    const user = userList.find(u => u.email.toLowerCase() === email.toLowerCase());
-    if (user && user.password === password) {
-      onLogin(user);
-    } else if (user && user.password !== password) {
-      setError('Incorrect password. Contact your CHRIST SBC Counselor for a reset.');
-    } else {
-      setError('Invalid email address.');
+    try {
+      await login(email, password);
+      // AuthContext handles state — App.tsx will re-render
+    } catch (err: any) {
+      const message = err.response?.data?.error || 'Login failed. Please check your credentials.';
+      setError(message);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -63,8 +46,9 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="w-full pl-10 pr-4 py-3 border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all font-medium"
-                  placeholder="society_id@ieee.org"
+                  placeholder="your@ieee.org"
                   required
+                  disabled={isLoading}
                 />
               </div>
             </div>
@@ -80,6 +64,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
                   className="w-full pl-10 pr-4 py-3 border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all font-medium"
                   placeholder="••••••••"
                   required
+                  disabled={isLoading}
                 />
               </div>
             </div>
@@ -93,15 +78,16 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
 
             <button 
               type="submit"
-              className="w-full bg-blue-600 text-white py-4 rounded-xl font-black uppercase tracking-widest hover:bg-blue-700 transition-all shadow-lg shadow-blue-200 active:scale-[0.98]"
+              disabled={isLoading}
+              className="w-full bg-blue-600 text-white py-4 rounded-xl font-black uppercase tracking-widest hover:bg-blue-700 transition-all shadow-lg shadow-blue-200 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              Sign In to Portal
+              {isLoading ? 'Signing In...' : 'Sign In to Portal'}
             </button>
           </form>
         </div>
         
         <p className="text-center text-slate-500 text-xs mt-10 font-bold uppercase tracking-widest">
-          &copy; {new Date().getFullYear()} IEEE Student Branch Finance Committee &bull; v2.4.0
+          &copy; {new Date().getFullYear()} IEEE Student Branch Finance Committee &bull; v3.0.0
         </p>
       </div>
     </div>
