@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { FinancialState, SyncSettings } from '../types';
-import { connectCloudAccount } from '../services/googleDriveService';
+// Google Drive sync moved to server-side (Phase 7 — server/src/services/googleDriveService.ts)
 
 interface BackupPageProps {
   state: FinancialState;
@@ -27,13 +27,11 @@ const BackupPage: React.FC<BackupPageProps> = ({ state, setState, onSyncNow, isS
 
     setConnecting(true);
     try {
-      await connectCloudAccount(tempClientId.trim());
+      // Cloud sync is now handled server-side via service account
+      // This will be fully functional once Google Drive service account is configured
+      alert('Cloud sync will be available once the server-side Google Drive integration is configured. Contact your administrator.');
       onUpdateSyncSettings({ 
-        isConnected: true, 
-        cloudUser: { 
-          name: state.currentUser?.name || "Authorized User", 
-          email: state.currentUser?.email || "ieee_sync@google.com" 
-        } 
+        isConnected: false,
       });
     } catch (err) {
       console.error("Cloud Connection Failed", err);

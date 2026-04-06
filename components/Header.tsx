@@ -38,7 +38,8 @@ const Header: React.FC<HeaderProps> = ({ user, activeTab, setActiveTab, onLogout
     { id: 'sync', label: 'Cloud Sync', icon: 'fa-cloud-arrow-up' },
   ];
 
-  if (user?.role === UserRole.ADMIN) {
+  const userRoleStr = user?.role as string;
+  if (userRoleStr === 'SUPER_ADMIN' || userRoleStr === 'ADMIN') {
     menuItems.push({ id: 'users', label: 'User Access', icon: 'fa-user-lock' });
   }
 
@@ -132,7 +133,14 @@ const Header: React.FC<HeaderProps> = ({ user, activeTab, setActiveTab, onLogout
         <div className="flex flex-col items-end">
           <span className="text-[9px] sm:text-sm font-bold text-slate-900 leading-none mb-0.5 sm:mb-1 text-right line-clamp-1 max-w-[60px] xs:max-w-none">{user.name}</span>
           <span className="text-[7px] sm:text-[10px] font-black text-blue-600 uppercase tracking-wider">
-            {user.role === UserRole.ADMIN ? (user.email === 'admin@ieee.org' ? 'Branch Counselor' : 'Executive Admin') : user.role.replace('_', ' ')}
+            {(() => {
+              const r = user.role as string;
+              if (r === 'SUPER_ADMIN') return 'Super Admin';
+              if (r === 'SB_TREASURER') return 'SB Treasurer';
+              if (r === 'SOCIETY_ADMIN') return 'Society Admin';
+              if (r === 'VIEWER') return 'Viewer';
+              return r.replace('_', ' ');
+            })()}
           </span>
         </div>
         <div className="w-7 h-7 sm:w-10 sm:h-10 rounded-xl bg-blue-100 flex items-center justify-center border border-blue-200 shrink-0">

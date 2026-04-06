@@ -187,23 +187,15 @@ export const MOCK_ANNOUNCEMENTS: Announcement[] = [
     targetAudience: 'ALL'
   }
 ];
-
-// Generate mock users for all units automatically
-export const MOCK_USERS: User[] = [
-  { id: 'u1', email: 'admin@ieee.org', password: 'admin', role: UserRole.ADMIN, name: 'CHRIST SBC' },
-  { id: 'u-dean', email: 'dean@ieee.org', password: 'admin', role: UserRole.ADMIN, name: 'Dean of Engineering' },
-  { id: 'u-director', email: 'director@ieee.org', password: 'admin', role: UserRole.ADMIN, name: 'Director' },
-  { id: 'u-assoc-dean', email: 'associate.dean@ieee.org', password: 'admin', role: UserRole.ADMIN, name: 'Associate Dean' },
-  { id: 'u-assoc-director', email: 'associate.director@ieee.org', password: 'admin', role: UserRole.ADMIN, name: 'Associate Director' },
-  ...ALL_UNITS.map((unit) => ({
-    id: `u-chair-${unit.id}`,
-    email: `${unit.id}@ieee.org`,
-    password: 'office',
-    role: UserRole.OFFICE_BEARER,
-    societyId: unit.id,
-    name: `${unit.shortName} Chair`
-  }))
-];
+/**
+ * REMOVED: MOCK_USERS with plaintext passwords.
+ * Authentication is now handled by the backend JWT system.
+ * Users are created via:
+ *   1. Database seed script: `cd server && npm run seed`
+ *   2. Admin registration: POST /api/auth/register (Super Admin only)
+ *
+ * See server/src/scripts/seed.ts for initial user setup.
+ */
 
 export const INCOME_CATEGORIES = [
   'Grants', 'Donations', 'Event Registrations', 'Sponsorships', 'Others'
