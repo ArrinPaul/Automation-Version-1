@@ -1,5 +1,5 @@
 
-import { Society, User, UserRole, Project, CalendarEvent, Announcement } from './types';
+import { Society, Project, CalendarEvent } from './types';
 
 export const INSTITUTION_NAME = "CHRIST (Deemed to be University), Bangalore";
 export const SCHOOL_NAME = "School of Engineering and Technology";
@@ -78,115 +78,11 @@ export const IEEE_COUNCILS: Society[] = [
 
 export const ALL_UNITS = [...IEEE_SOCIETIES, ...AFFINITY_GROUPS, ...IEEE_COUNCILS];
 
-export const MOCK_PROJECTS: Project[] = [
-  {
-    id: 'prj-1',
-    societyId: 'ras',
-    category: 'TECHNICAL_PROJECT',
-    title: 'Autonomous Agricultural Drone',
-    sanctioningBody: 'IEEE R10 HAC',
-    amountSanctioned: 45000,
-    startDate: '2024-01-15',
-    status: 'ONGOING',
-    description: 'Developing a low-cost drone for small-scale farmers to monitor crop health.'
-  },
-  {
-    id: 'prj-2',
-    societyId: 'wie',
-    category: 'TECHNICAL_PROJECT',
-    title: 'STEM Outreach for Rural Girls',
-    sanctioningBody: 'IEEE WIE HQ',
-    amountSanctioned: 15000,
-    startDate: '2023-11-20',
-    status: 'COMPLETED',
-    description: 'Mentorship program and workshops for girls in grade 8-10 in rural Bangalore.'
-  },
-  {
-    id: 'prj-3',
-    societyId: 'sb',
-    category: 'TRAVEL_GRANT',
-    title: 'IEEE R10 SYWL Congress Travel',
-    sanctioningBody: 'IEEE Region 10',
-    amountSanctioned: 65000,
-    startDate: '2024-03-10',
-    status: 'ANNOUNCED',
-    description: 'Travel grant for Student Branch Chair to attend the Regional Congress in Tokyo.'
-  },
-  {
-    id: 'prj-4',
-    societyId: 'cs',
-    category: 'SCHOLARSHIP',
-    title: 'IEEE CS Richard E. Merwin Scholarship',
-    sanctioningBody: 'IEEE Computer Society',
-    amountSanctioned: 82000,
-    startDate: '2024-02-01',
-    status: 'AWARDED',
-    description: 'Prestigious scholarship recognized for active involvement in student branch leadership and academic excellence.'
-  },
-  {
-    id: 'prj-5',
-    societyId: 'sb',
-    category: 'AWARD',
-    title: 'Outstanding Student Branch Award',
-    sanctioningBody: 'IEEE Bangalore Section',
-    amountSanctioned: 25000,
-    startDate: '2024-05-15',
-    status: 'AWARDED',
-    description: 'Award recognized for the best performing Student Branch in the section for the academic year 2023-24.'
-  }
-];
-
-export const MOCK_CALENDAR_EVENTS: CalendarEvent[] = [
-  {
-    id: 'cal-1',
-    societyId: 'cs',
-    title: 'CodeSprint 2024 Hackathon',
-    date: new Date(new Date().getFullYear(), new Date().getMonth(), 15).toISOString().split('T')[0],
-    time: '09:00',
-    venue: 'Block 4, 3rd Floor Labs',
-    status: 'CONFIRMED',
-    description: '24-hour hackathon focused on sustainable development goals.'
-  },
-  {
-    id: 'cal-2',
-    societyId: 'ras',
-    title: 'Robotics Workshop: Line Follower',
-    date: new Date(new Date().getFullYear(), new Date().getMonth(), 22).toISOString().split('T')[0],
-    time: '14:00',
-    venue: 'Auditorium Block 1',
-    status: 'PROPOSED',
-    description: 'Introductory workshop for first year students on basic robotics.'
-  },
-  {
-    id: 'cal-3',
-    societyId: 'wie',
-    title: 'Women in Tech Panel Discussion',
-    date: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 5).toISOString().split('T')[0],
-    time: '10:00',
-    venue: 'Seminar Hall',
-    status: 'CONFIRMED',
-    description: 'Panel discussion with industry leaders from top tech companies.'
-  }
-];
-
-export const MOCK_ANNOUNCEMENTS: Announcement[] = [
-  {
-    id: 'ann-1',
-    title: 'General Body Meeting',
-    message: 'All office bearers are requested to attend the GBM on Friday at 4 PM in Block 1 Auditorium. We will discuss the upcoming tech fest roadmap.',
-    date: new Date(new Date().setDate(new Date().getDate() - 2)).toISOString().split('T')[0],
-    senderName: 'CHRIST SBC',
-    targetAudience: 'LEADERSHIP'
-  },
-  {
-    id: 'ann-2',
-    title: 'Membership Drive Extended',
-    message: 'The early bird membership drive has been extended by one week due to high demand. Please inform your peers and encourage them to sign up.',
-    date: new Date(new Date().setDate(new Date().getDate() - 5)).toISOString().split('T')[0],
-    senderName: 'Dean of Engineering',
-    targetAudience: 'ALL'
-  }
-];
+/**
+ * REMOVED: Mock data (MOCK_PROJECTS, MOCK_CALENDAR_EVENTS, MOCK_ANNOUNCEMENTS).
+ * All data is now served from MongoDB via the backend API.
+ * Initial data can be loaded via: `cd server && npm run seed`
+ */
 /**
  * REMOVED: MOCK_USERS with plaintext passwords.
  * Authentication is now handled by the backend JWT system.
