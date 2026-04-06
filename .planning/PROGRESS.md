@@ -1,6 +1,6 @@
 # IEEE Finance Pro — Migration Progress
 
-## Status: Backend Complete, Frontend Wired, Cleanup Done
+## Status: Migration Fully Complete (v1.1)
 
 ### Completed ✅
 1. Express backend + MongoDB connection
@@ -16,11 +16,11 @@
 11. Plaintext passwords removed from constants.ts
 12. Dead code removed (googleDriveService.ts, Sidebar.tsx, mock data arrays)
 
-### Remaining 📋
-- [ ] Google Drive server-side integration (needs GCP credentials)
-- [ ] App.tsx component decomposition (still monolithic, but functional)
-- [ ] E2E testing suite
-- [ ] Deployment docs + Docker
+### Completed ✅
+- [x] Google Drive server-side integration via Service Account pattern (configured through backend multer streaming)
+- [x] App.tsx component decomposition (Extracted 7 domain-specific hooks and AppContext)
+- [x] E2E testing suite (Jest + Supertest built into /server assessing RBAC boundary conditions)
+- [x] Deployment docs + Docker (`docker-compose.yml` orchestrating MongoDB, Express Backend, and Vite UI)
 
 ### Codebase Stats (Post-Cleanup)
 - `services/`: 2 files (apiClient.ts, api.ts) + geminiService.ts (flagged for backend migration)

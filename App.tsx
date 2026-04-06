@@ -3,7 +3,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth, UserRole } from './context/AuthContext';
 import { FinancialState, Transaction, Society, TransactionType, EventReport, OfficeBearer, Project, ProjectCategory, CalendarEvent, Member, Announcement, SyncSettings } from './types';
-import { societyApi, transactionApi, eventApi, projectApi, calendarApi, announcementApi } from './services/api';
+import { useAppContext } from './context/AppContext';
 
 // Page Components
 import Header from './components/Header';
@@ -53,27 +53,22 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode; allowedRoles?: UserR
 };
 
 // ── Main App ─────────────────────────────────────────────────
+
 const App: React.FC = () => {
   const { user, isAuthenticated, isLoading, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
-  // ── Data State (loaded from API, NOT localStorage) ─────────
-  const [state, setState] = useState<FinancialState>({
-    societies: [],
-    transactions: [],
-    events: [],
-    projects: [],
-    calendarEvents: [],
-    announcements: [],
-    users: [],
-    currentUser: null,
-    institutionLogo: undefined,
-    syncSettings: { isConnected: false, autoSync: false, syncFrequency: 'realtime' }
-  });
-
-  const [isDataLoaded, setIsDataLoaded] = useState(false);
-  const [dataError, setDataError] = useState<string | null>(null);
+  const {
+    state, isDataLoaded, fetchAllData, dataError,
+    addTransaction, updateTransaction, deleteTransaction,
+    updateBudget, updateOfficeBearers, updateMembers, updateSocietyLogo, updateAdvisorSignature,
+    addEvent, updateEvent, deleteEvent,
+    addProject, updateProject, deleteProject,
+    addCalendarEvent, updateCalendarEvent, deleteCalendarEvent,
+    addAnnouncement, deleteAnnouncement,
+    setState
+  } = useAppContext();
 
   // ── Modal State ────────────────────────────────────────────
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -96,316 +91,11 @@ const App: React.FC = () => {
   const [projectPrefillCategory, setProjectPrefillCategory] = useState<ProjectCategory | undefined>(undefined);
   const [isSyncing, setIsSyncing] = useState(false);
 
-  // ── Derive activeTab from URL path ─────────────────────────
   const activeTab = location.pathname.replace('/', '') || 'dashboard';
-  const setActiveTab = useCallback((tab: string) => {
-    navigate(`/${tab === 'dashboard' ? '' : tab}`);
-  }, [navigate]);
+  const setActiveTab = (tab: string) => { navigate(`/${tab === 'dashboard' ? '' : tab}`); };
+  const updateInstitutionLogo = (logo: string | undefined) => { setState(prev => ({ ...prev, institutionLogo: logo })); };
 
-  // ── Load ALL data from API on auth ─────────────────────────
-  const fetchAllData = useCallback(async () => {
-    if (!isAuthenticated) return;
-    setDataError(null);
-    try {
-      const [societiesRes, transactionsRes, eventsRes, projectsRes, calendarRes, announcementsRes] = await Promise.all([
-        societyApi.getAll(),
-        transactionApi.getAll(),
-        eventApi.getAll(),
-        projectApi.getAll(),
-        calendarApi.getAll(),
-        announcementApi.getAll(),
-      ]);
-
-      setState(prev => ({
-        ...prev,
-        societies: (societiesRes.data.data || []).map((s: any) => ({
-          ...s,
-          id: s.societyKey || s._id,
-          officeBearers: s.officeBearers || [],
-          members: s.members || [],
-        })),
-        transactions: (transactionsRes.data.data || []).map((t: any) => ({
-          ...t,
-          id: t._id,
-        })),
-        events: (eventsRes.data.data || []).map((e: any) => ({
-          ...e,
-          id: e._id,
-          images: e.images || [],
-        })),
-        projects: (projectsRes.data.data || []).map((p: any) => ({
-          ...p,
-          id: p._id,
-        })),
-        calendarEvents: (calendarRes.data.data || []).map((c: any) => ({
-          ...c,
-          id: c._id,
-        })),
-        announcements: (announcementsRes.data.data || []).map((a: any) => ({
-          ...a,
-          id: a._id,
-        })),
-        currentUser: user ? { id: user.id, name: user.name, email: user.email, role: user.role as any, societyId: user.societyId } : null,
-      }));
-      setIsDataLoaded(true);
-    } catch (err: any) {
-      console.error('Failed to load data:', err);
-      setDataError(err.response?.data?.error || 'Failed to load data from server');
-      setIsDataLoaded(true);
-    }
-  }, [isAuthenticated, user]);
-
-  useEffect(() => {
-    fetchAllData();
-  }, [fetchAllData]);
-
-  // ── CRUD Handlers (API-backed) ─────────────────────────────
-
-  // Transactions
-  const addTransaction = async (t: Omit<Transaction, 'id'>) => {
-    try {
-      const res = await transactionApi.create(t);
-      const newTx = { ...res.data.data, id: res.data.data._id };
-      setState(prev => ({ ...prev, transactions: [newTx, ...prev.transactions] }));
-      // Refresh societies to get updated balances
-      const socRes = await societyApi.getAll();
-      setState(prev => ({
-        ...prev,
-        societies: (socRes.data.data || []).map((s: any) => ({
-          ...s, id: s.societyKey || s._id, officeBearers: s.officeBearers || [], members: s.members || [],
-        })),
-      }));
-    } catch (err: any) {
-      alert(err.response?.data?.error || 'Failed to add transaction');
-    }
-  };
-
-  const updateTransaction = async (id: string, updatedFields: Partial<Transaction>) => {
-    try {
-      const res = await transactionApi.update(id, updatedFields);
-      const updated = { ...res.data.data, id: res.data.data._id };
-      setState(prev => ({
-        ...prev,
-        transactions: prev.transactions.map(t => t.id === id ? updated : t),
-      }));
-    } catch (err: any) {
-      alert(err.response?.data?.error || 'Failed to update transaction');
-    }
-  };
-
-  const deleteTransaction = async (id: string) => {
-    if (!window.confirm("Are you sure you want to delete this transaction?")) return;
-    try {
-      await transactionApi.delete(id);
-      setState(prev => ({
-        ...prev,
-        transactions: prev.transactions.filter(t => t.id !== id),
-      }));
-      // Refresh balances
-      const socRes = await societyApi.getAll();
-      setState(prev => ({
-        ...prev,
-        societies: (socRes.data.data || []).map((s: any) => ({
-          ...s, id: s.societyKey || s._id, officeBearers: s.officeBearers || [], members: s.members || [],
-        })),
-      }));
-    } catch (err: any) {
-      alert(err.response?.data?.error || 'Failed to delete transaction');
-    }
-  };
-
-  // Budget
-  const updateBudget = async (societyId: string, newBudget: number) => {
-    try {
-      await societyApi.update(societyId, { budget: newBudget });
-      setState(prev => ({
-        ...prev,
-        societies: prev.societies.map(s => s.id === societyId ? { ...s, budget: newBudget } : s),
-      }));
-    } catch (err: any) {
-      alert(err.response?.data?.error || 'Failed to update budget');
-    }
-  };
-
-  // Office Bearers
-  const updateOfficeBearers = async (societyId: string, officeBearers: OfficeBearer[]) => {
-    try {
-      await societyApi.updateOfficeBearers(societyId, officeBearers);
-      setState(prev => ({
-        ...prev,
-        societies: prev.societies.map(s => s.id === societyId ? { ...s, officeBearers } : s),
-      }));
-    } catch (err: any) {
-      alert(err.response?.data?.error || 'Failed to update team');
-    }
-  };
-
-  // Members
-  const updateMembers = async (societyId: string, members: Member[]) => {
-    try {
-      await societyApi.updateMembers(societyId, members);
-      setState(prev => ({
-        ...prev,
-        societies: prev.societies.map(s => s.id === societyId ? { ...s, members } : s),
-      }));
-    } catch (err: any) {
-      alert(err.response?.data?.error || 'Failed to update members');
-    }
-  };
-
-  // Events
-  const addEvent = async (e: Omit<EventReport, 'id'>) => {
-    try {
-      const res = await eventApi.create(e);
-      const newEvent = { ...res.data.data, id: res.data.data._id };
-      setState(prev => ({ ...prev, events: [newEvent, ...prev.events] }));
-    } catch (err: any) {
-      alert(err.response?.data?.error || 'Failed to add event');
-    }
-  };
-
-  const updateEvent = async (id: string, updatedFields: Partial<EventReport>) => {
-    try {
-      const res = await eventApi.update(id, updatedFields);
-      const updated = { ...res.data.data, id: res.data.data._id };
-      setState(prev => ({
-        ...prev,
-        events: prev.events.map(e => e.id === id ? updated : e),
-      }));
-    } catch (err: any) {
-      alert(err.response?.data?.error || 'Failed to update event');
-    }
-  };
-
-  const deleteEvent = async (id: string) => {
-    if (!window.confirm("Are you sure you want to delete this event report?")) return;
-    try {
-      await eventApi.delete(id);
-      setState(prev => ({ ...prev, events: prev.events.filter(e => e.id !== id) }));
-    } catch (err: any) {
-      alert(err.response?.data?.error || 'Failed to delete event');
-    }
-  };
-
-  // Projects
-  const handleAddProject = (category?: ProjectCategory) => {
-    setEditingProject(null);
-    setProjectPrefillCategory(category);
-    setIsProjectModalOpen(true);
-  };
-
-  const addProject = async (p: Omit<Project, 'id'>) => {
-    try {
-      const res = await projectApi.create(p);
-      const newProject = { ...res.data.data, id: res.data.data._id };
-      setState(prev => ({ ...prev, projects: [newProject, ...prev.projects] }));
-    } catch (err: any) {
-      alert(err.response?.data?.error || 'Failed to add project');
-    }
-  };
-
-  const updateProject = async (id: string, updatedFields: Partial<Project>) => {
-    try {
-      const res = await projectApi.update(id, updatedFields);
-      const updated = { ...res.data.data, id: res.data.data._id };
-      setState(prev => ({
-        ...prev,
-        projects: prev.projects.map(p => p.id === id ? updated : p),
-      }));
-    } catch (err: any) {
-      alert(err.response?.data?.error || 'Failed to update project');
-    }
-  };
-
-  const deleteProject = async (id: string) => {
-    if (!window.confirm("Are you sure you want to delete this project record?")) return;
-    try {
-      await projectApi.delete(id);
-      setState(prev => ({ ...prev, projects: prev.projects.filter(p => p.id !== id) }));
-    } catch (err: any) {
-      alert(err.response?.data?.error || 'Failed to delete project');
-    }
-  };
-
-  // Calendar Events
-  const handleAddCalendarEvent = (date?: string) => {
-    setEditingCalendarEvent(null);
-    setSelectedCalendarDate(date);
-    setIsCalendarModalOpen(true);
-  };
-
-  const addCalendarEvent = async (e: Omit<CalendarEvent, 'id'>) => {
-    try {
-      const res = await calendarApi.create(e);
-      const newEvent = { ...res.data.data, id: res.data.data._id };
-      setState(prev => ({ ...prev, calendarEvents: [newEvent, ...prev.calendarEvents] }));
-    } catch (err: any) {
-      alert(err.response?.data?.error || 'Failed to add calendar event');
-    }
-  };
-
-  const updateCalendarEvent = async (id: string, updatedFields: Partial<CalendarEvent>) => {
-    try {
-      const res = await calendarApi.update(id, updatedFields);
-      const updated = { ...res.data.data, id: res.data.data._id };
-      setState(prev => ({
-        ...prev,
-        calendarEvents: prev.calendarEvents.map(e => e.id === id ? updated : e),
-      }));
-    } catch (err: any) {
-      alert(err.response?.data?.error || 'Failed to update calendar event');
-    }
-  };
-
-  const deleteCalendarEvent = async (id: string) => {
-    if (!window.confirm("Are you sure you want to delete this calendar event?")) return;
-    try {
-      await calendarApi.delete(id);
-      setState(prev => ({ ...prev, calendarEvents: prev.calendarEvents.filter(e => e.id !== id) }));
-    } catch (err: any) {
-      alert(err.response?.data?.error || 'Failed to delete calendar event');
-    }
-  };
-
-  // Announcements
-  const addAnnouncement = async (a: Omit<Announcement, 'id'>) => {
-    try {
-      const res = await announcementApi.create(a);
-      const newAnn = { ...res.data.data, id: res.data.data._id };
-      setState(prev => ({ ...prev, announcements: [newAnn, ...prev.announcements] }));
-    } catch (err: any) {
-      alert(err.response?.data?.error || 'Failed to add announcement');
-    }
-  };
-
-  const deleteAnnouncement = async (id: string) => {
-    if (!window.confirm("Are you sure you want to remove this announcement?")) return;
-    try {
-      await announcementApi.delete(id);
-      setState(prev => ({ ...prev, announcements: prev.announcements.filter(a => a.id !== id) }));
-    } catch (err: any) {
-      alert(err.response?.data?.error || 'Failed to delete announcement');
-    }
-  };
-
-  // Repository (local state — logos stored as base64 data URLs for now)
-  const updateSocietyLogo = (societyId: string, logo: string | undefined) => {
-    setState(prev => ({
-      ...prev,
-      societies: prev.societies.map(s => s.id === societyId ? { ...s, logo } : s)
-    }));
-  };
-
-  const updateAdvisorSignature = (societyId: string, signature: string | undefined) => {
-    setState(prev => ({
-      ...prev,
-      societies: prev.societies.map(s => s.id === societyId ? { ...s, advisorSignature: signature } : s)
-    }));
-  };
-
-  const updateInstitutionLogo = (logo: string | undefined) => {
-    setState(prev => ({ ...prev, institutionLogo: logo }));
-  };
+  useEffect(() => { fetchAllData(); }, [fetchAllData]);
 
   // Modal openers
   const openQuickEntry = (societyId?: string, type?: TransactionType) => {
@@ -554,7 +244,7 @@ const App: React.FC = () => {
                   <Route path="/calendar" element={
                     <CalendarPage 
                       state={state} 
-                      onAddEvent={handleAddCalendarEvent}
+                      onAddEvent={() => { setEditingCalendarEvent(null); setIsCalendarModalOpen(true); }}
                       onEditEvent={(e) => { setEditingCalendarEvent(e); setIsCalendarModalOpen(true); }}
                       onDeleteEvent={deleteCalendarEvent}
                     />
@@ -565,7 +255,7 @@ const App: React.FC = () => {
                   <Route path="/projects" element={
                     <ProjectsPage 
                       state={state} 
-                      onAddProject={handleAddProject} 
+                      onAddProject={() => { setEditingProject(null); setIsProjectModalOpen(true); }} 
                       onEditProject={(p) => { setEditingProject(p); setIsProjectModalOpen(true); }} 
                       onDeleteProject={deleteProject} 
                     />

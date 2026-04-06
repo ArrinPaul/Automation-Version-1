@@ -17,6 +17,7 @@ import eventRoutes from './routes/eventRoutes';
 import projectRoutes from './routes/projectRoutes';
 import calendarRoutes from './routes/calendarRoutes';
 import announcementRoutes from './routes/announcementRoutes';
+import uploadRoutes from './routes/uploadRoutes';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -67,6 +68,7 @@ app.use('/api/events', eventRoutes);
 app.use('/api/projects', projectRoutes);
 app.use('/api/calendar', calendarRoutes);
 app.use('/api/announcements', announcementRoutes);
+app.use('/api/upload', uploadRoutes);
 
 // ── 404 Handler ──────────────────────────────────────────────
 app.use((_req, res) => {
