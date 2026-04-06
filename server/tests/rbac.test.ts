@@ -1,30 +1,39 @@
 import request from 'supertest';
-import app from '../src/index'; // Warning: requires index.ts export default app
-import mongoose from 'mongoose';
-import User from '../src/models/User';
+import app from '../src/index'; 
+import User, { UserRole } from '../src/models/User';
 
 describe('Auth Endpoints & RBAC Validation', () => {
   let superAdminToken: string;
   let viewerToken: string;
 
-  beforeEach(async () => {
-    // Register Super Admin
-    const saRes = await request(app).post('/api/auth/register').send({
+  beforeAll(async () => {
+    // Register Super Admin directly
+    await User.create({
       name: 'Super Admin User',
       email: 'sa@ieee.org',
       password: 'password123',
-      role: 'Super Admin',
+      role: UserRole.SUPER_ADMIN
     });
-    superAdminToken = saRes.body.token;
 
-    // Register Viewer
-    const viewerRes = await request(app).post('/api/auth/register').send({
+    const saRes = await request(app).post('/api/auth/login').send({
+      email: 'sa@ieee.org',
+      password: 'password123'
+    });
+    superAdminToken = saRes.body.data.token;
+
+    // Register Viewer directly
+    await User.create({
       name: 'Viewer User',
       email: 'viewer@ieee.org',
       password: 'password123',
-      role: 'Viewer',
+      role: UserRole.VIEWER
     });
-    viewerToken = viewerRes.body.token;
+
+    const viewerRes = await request(app).post('/api/auth/login').send({
+      email: 'viewer@ieee.org',
+      password: 'password123'
+    });
+    viewerToken = viewerRes.body.data.token;
   });
 
   describe('RBAC Validation on /api/societies', () => {

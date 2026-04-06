@@ -1,13 +1,14 @@
 import express from 'express';
 import { upload } from '../middleware/uploadMiddleware';
 import { uploadFile } from '../services/googleDriveService';
-import { protect } from '../middleware/authMiddleware';
-import { restrictTo } from '../middleware/roleMiddleware';
+import authMiddleware from '../middleware/authMiddleware';
+import roleMiddleware from '../middleware/roleMiddleware';
+import { UserRole } from '../models/User';
 
 const router = express.Router();
 
 // Allow all authenticated users except 'Viewer' to upload files (transactions, events, etc)
-router.post('/', protect, restrictTo('Super Admin', 'SB Treasurer', 'Society Admin'), upload.single('file'), async (req, res, next) => {
+router.post('/', authMiddleware, roleMiddleware([UserRole.SUPER_ADMIN, UserRole.SB_TREASURER, UserRole.SOCIETY_ADMIN]), upload.single('file'), async (req, res, next) => {
   try {
     if (!req.file) {
       return res.status(400).json({ success: false, error: 'No file uploaded' });

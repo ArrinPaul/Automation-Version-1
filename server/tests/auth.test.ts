@@ -1,36 +1,59 @@
 import request from 'supertest';
 import app from '../src/index';
+import User, { UserRole } from '../src/models/User';
 
 describe('Authentication Flow', () => {
-  it('should register a new user successfully', async () => {
-    const res = await request(app).post('/api/auth/register').send({
-      name: 'Auth Test User',
-      email: 'authtest@ieee.org',
+  
+  let superAdminToken: string;
+
+  beforeEach(async () => {
+    // 1. Manually create a SUPER_ADMIN in the DB
+    const adminUser = await User.create({
+      name: 'Super Admin',
+      email: 'admin_auth@ieee.org',
       password: 'password123',
-      role: 'Society Admin',
-      societyId: 'AUTH-TEST-SOC'
+      role: UserRole.SUPER_ADMIN
     });
+
+    // 2. Login to get token
+    const loginRes = await request(app).post('/api/auth/login').send({
+      email: 'admin_auth@ieee.org',
+      password: 'password123'
+    });
+    superAdminToken = loginRes.body.data.token;
+  });
+
+  it('should register a new user successfully when authorized as Super Admin', async () => {
+    const res = await request(app)
+      .post('/api/auth/register')
+      .set('Authorization', `Bearer ${superAdminToken}`)
+      .send({
+        name: 'Society Admin User',
+        email: 'socadmin@ieee.org',
+        password: 'password123',
+        role: UserRole.SOCIETY_ADMIN,
+        societyId: 'AUTH-TEST-SOC'
+      });
 
     expect(res.status).toBe(201);
     expect(res.body.success).toBe(true);
-    expect(res.body.token).toBeDefined();
   });
 
   it('should login an existing user', async () => {
     const res = await request(app).post('/api/auth/login').send({
-      email: 'authtest@ieee.org',
+      email: 'socadmin@ieee.org',
       password: 'password123',
     });
 
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
-    expect(res.body.token).toBeDefined();
-    expect(res.body.user.role).toBe('Society Admin');
+    expect(res.body.data.token).toBeDefined();
+    expect(res.body.data.user.role).toBe(UserRole.SOCIETY_ADMIN);
   });
 
   it('should fail login on wrong password', async () => {
     const res = await request(app).post('/api/auth/login').send({
-      email: 'authtest@ieee.org',
+      email: 'socadmin@ieee.org',
       password: 'wrongpassword',
     });
 

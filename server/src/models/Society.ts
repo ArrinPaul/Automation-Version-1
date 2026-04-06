@@ -71,7 +71,6 @@ const societySchema = new Schema<ISociety>(
 );
 
 // Index for fast lookups
-societySchema.index({ societyKey: 1 });
 societySchema.index({ shortName: 1 });
 
 const Society = mongoose.model<ISociety>('Society', societySchema);
