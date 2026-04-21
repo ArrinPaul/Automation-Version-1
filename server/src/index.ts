@@ -16,6 +16,8 @@ import projectRoutes from './routes/projectRoutes';
 import announcementRoutes from './routes/announcementRoutes';
 import memberRoutes from './routes/memberRoutes';
 import officeBearerRoutes from './routes/officeBearerRoutes';
+import speakerRoutes from './routes/speakerRoutes';
+import calendarEventRoutes from './routes/calendarEventRoutes';
 
 const app = express();
 
@@ -45,6 +47,8 @@ app.use('/api/projects', projectRoutes);
 app.use('/api/announcements', announcementRoutes);
 app.use('/api/members', memberRoutes);
 app.use('/api/office-bearers', officeBearerRoutes);
+app.use('/api/speakers', speakerRoutes);
+app.use('/api/calendar-events', calendarEventRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({ 

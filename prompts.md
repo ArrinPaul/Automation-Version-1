@@ -162,3 +162,91 @@ This document contains individual, high-fidelity prompts for executing each phas
 - [ ] **Backups**: JSON snapshot tool generates valid, restorable files.
 - [ ] **Performance**: Lighthouse score for Accessibility & SEO is 90+.
 - [ ] **Security**: No secrets or API keys are present in the frontend bundle.
+
+---
+
+## 📊 Phase 0: Gap Analysis Report
+
+### **0. Spec File Availability Check**
+
+- The prompt references `MISSING_FEATURES_SPECIFICATION.md`, but this file does not exist in the repository.
+- Route comparison is based on `FEATURE_SPEC.md` (Phase 0.1 Route Implementation Matrix).
+
+---
+
+### **1. Prisma Model to Controller/Repository Mapping (Post-Fix)**
+
+#### Models Analyzed: 11 Total
+
+| Model | Repository | Controller | Status |
+|---|---|---|---|
+| `User` | ✅ `userRepository.ts` | ✅ `authController.ts` | ✅ Mapped |
+| `Society` | ✅ `societyRepository.ts` | ✅ `societyController.ts` | ✅ Mapped |
+| `Transaction` | ✅ `transactionRepository.ts` | ✅ `transactionController.ts` | ✅ Mapped |
+| `Event` | ✅ `eventRepository.ts` | ✅ `eventController.ts` | ✅ Mapped |
+| `Speaker` | ✅ `speakerRepository.ts` | ✅ `speakerController.ts` | ✅ Mapped |
+| `Project` | ✅ `projectRepository.ts` | ✅ `projectController.ts` | ✅ Mapped |
+| `CalendarEvent` | ✅ `calendarEventRepository.ts` | ✅ `calendarEventController.ts` | ✅ Mapped |
+| `Announcement` | ✅ `announcementRepository.ts` | ✅ `announcementController.ts` | ✅ Mapped |
+| `OfficeBearer` | ✅ `officeBearerRepository.ts` | ✅ `officeBearerController.ts` | ✅ Mapped |
+| `Member` | ✅ `memberRepository.ts` | ✅ `memberController.ts` | ✅ Mapped |
+| `AuditLog` | ✅ `auditLogRepository.ts` | ✅ `auditController.ts` (`/audit/logs`) | ✅ Mapped |
+
+#### Status:
+- **Orphaned models:** None.
+- **Audit write path:** Added in `authController.ts` for login/register/role-change events.
+
+---
+
+### **2. Frontend Route Gap Analysis (`App.tsx` vs `FEATURE_SPEC.md`)**
+
+#### Implemented in `client/src/App.tsx` (Post-Fix):
+`/`, `/login`, `/transactions`, `/societies`, `/events`, `/calendar`, `/projects`, `/announcements`, `/communications`, `/admin/users`, `/admin/registry`, `/reports/financial`, `/reports/quarterly-print`
+
+#### Missing from spec matrix:
+- None.
+
+---
+
+### **3. `verifyToken.ts` RBAC Metadata Extraction Validation**
+
+#### Verified behavior:
+- Reads `role` and `societyId` from Supabase `user_metadata`.
+- Validates role via `isRole(...)` guard and falls back to PostgreSQL profile.
+- Sets `req.user = { id, email, role, societyId }` for downstream RBAC.
+
+| Role | Metadata Parse | DB Fallback | Result |
+|---|---|---|---|
+| `MANAGEMENT` | ✅ | ✅ | ✅ Correct |
+| `FACULTY_ADVISOR` | ✅ | ✅ | ✅ Correct |
+| `SOCIETY_OB` | ✅ | ✅ | ✅ Correct |
+| `MEMBER` | ✅ | ✅ | ✅ Correct |
+
+---
+
+### **4. `errorHandler` and `logger` Integration Verification**
+
+#### Confirmed:
+- `server/src/index.ts` uses `morgan` → `logger.info(...)` and mounts `app.use(errorHandler)` globally.
+- Controllers route errors through `next(new AppError(...))`.
+- `uploadController.ts` uses `AppError` for validation and failure paths.
+
+#### Deferred to next phase (by instruction):
+- **Global structured-logging standardization** across all controllers (uniform `actorId/resource/action/status`) is deferred, because this is directly aligned with the next-phase auth/logging hardening prompt.
+
+---
+
+## **Phase 0 Completion Checklist - Updated**
+- [x] Orphaned Prisma models identified.
+- [x] Missing frontend routes listed.
+- [x] RBAC metadata extraction verified.
+- [x] Error/Logger integration confirmed.
+
+---
+
+### **Phase 0 Remediation Done Now**
+1. Added `userRepository.ts` and refactored `authController.ts` to use repository abstraction.
+2. Added `speaker` API stack: repository + controller + `/api/speakers` routes.
+3. Added `calendarEvent` API stack: repository + controller + `/api/calendar-events` routes.
+4. Added `auditLogRepository.ts`, audit write-path in auth flows, and `/api/audit/logs` endpoint.
+5. Added missing frontend routes/pages for calendar, communications, admin, and reports.

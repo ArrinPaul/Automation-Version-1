@@ -4,6 +4,20 @@ import logger from './logger';
 
 dotenv.config();
 
+const isTestMode = process.env.NODE_ENV === 'test';
+
+const runtimeEnv = isTestMode
+  ? {
+      ...process.env,
+      DATABASE_URL: process.env.DATABASE_URL ?? 'postgresql://postgres:postgres@localhost:5432/ieee_test',
+      SUPABASE_URL: process.env.SUPABASE_URL ?? 'http://localhost:54321',
+      SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY ?? 'test-service-role-key',
+      FRONTEND_URL: process.env.FRONTEND_URL ?? 'http://localhost:5173',
+      PORT: process.env.PORT ?? '5000',
+      NODE_ENV: 'test',
+    }
+  : process.env;
+
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   PORT: z.string().default('5000'),
@@ -13,10 +27,13 @@ const envSchema = z.object({
   FRONTEND_URL: z.string().url().default('http://localhost:5173'),
 });
 
-const envParse = envSchema.safeParse(process.env);
+const envParse = envSchema.safeParse(runtimeEnv);
 
 if (!envParse.success) {
-  logger.error('❌ Invalid environment variables:', envParse.error.format());
+  logger.error({
+    message: '❌ Invalid environment variables',
+    issues: envParse.error.format(),
+  });
   process.exit(1);
 }
 

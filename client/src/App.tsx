@@ -8,6 +8,12 @@ import SocietiesPage from './features/SocietiesPage';
 import EventsPage from './features/EventsPage';
 import ProjectsPage from './features/ProjectsPage';
 import AnnouncementsPage from './features/AnnouncementsPage';
+import CalendarPage from './features/CalendarPage';
+import CommunicationHubPage from './features/CommunicationHubPage';
+import UserManagementPage from './features/UserManagementPage';
+import RegistryPage from './features/RegistryPage';
+import FinancialReportsPage from './features/FinancialReportsPage';
+import QuarterlyStatementPage from './features/QuarterlyStatementPage';
 import Login from './features/Login';
 import Sidebar from './components/layout/Sidebar';
 import { Toaster } from 'sonner';
@@ -64,6 +70,11 @@ const App: React.FC = () => {
                 <EventsPage />
               </ProtectedRoute>
             } />
+            <Route path="/calendar" element={
+              <ProtectedRoute>
+                <CalendarPage />
+              </ProtectedRoute>
+            } />
             <Route path="/projects" element={
               <ProtectedRoute>
                 <ProjectsPage />
@@ -72,6 +83,31 @@ const App: React.FC = () => {
             <Route path="/announcements" element={
               <ProtectedRoute>
                 <AnnouncementsPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/communications" element={
+              <ProtectedRoute>
+                <CommunicationHubPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/users" element={
+              <ProtectedRoute roles={["MANAGEMENT"]}>
+                <UserManagementPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/registry" element={
+              <ProtectedRoute roles={["MANAGEMENT"]}>
+                <RegistryPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/reports/financial" element={
+              <ProtectedRoute roles={["MANAGEMENT"]}>
+                <FinancialReportsPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/reports/quarterly-print" element={
+              <ProtectedRoute roles={["MANAGEMENT"]}>
+                <QuarterlyStatementPage />
               </ProtectedRoute>
             } />
           </Routes>

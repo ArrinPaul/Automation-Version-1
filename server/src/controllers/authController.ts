@@ -1,15 +1,29 @@
 import { Request, Response, NextFunction } from 'express';
-import { PrismaClient, Role } from '@prisma/client';
+import { Prisma, Role } from '@prisma/client';
 import { createClient } from '@supabase/supabase-js';
 import { AuthRequest } from '../middleware/verifyToken';
 import { AppError } from '../middleware/errorHandler';
 import logger from '../config/logger';
+import { userRepository } from '../repositories/userRepository';
+import { auditLogRepository } from '../repositories/auditLogRepository';
 
-const prisma = new PrismaClient();
 const supabase = createClient(
   process.env.SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
+
+const writeAuditLog = async (
+  userId: string,
+  action: string,
+  resource: string,
+  details?: Prisma.InputJsonValue
+) => {
+  try {
+    await auditLogRepository.create({ userId, action, resource, details });
+  } catch (error) {
+    logger.warn({ action, resource, userId, status: 'audit_log_failed', error }, 'Failed to persist audit log');
+  }
+};
 
 export const login = async (req: Request, res: Response, next: NextFunction) => {
   const { email, password } = req.body;
@@ -22,14 +36,19 @@ export const login = async (req: Request, res: Response, next: NextFunction) => 
 
     if (error) return next(new AppError(error.message, 401));
 
-    const user = await prisma.user.findUnique({
-      where: { email },
-      include: { society: true }
-    });
+    const user = await userRepository.findByEmailWithSociety(email);
 
     if (!user) return next(new AppError('User profile not found', 404));
 
-    logger.info(`User logged in: ${email}`);
+    logger.info({
+      actorId: user.id,
+      resource: 'auth',
+      action: 'login',
+      status: 'success',
+      email,
+    });
+
+    await writeAuditLog(user.id, 'LOGIN', 'AUTH', { email });
 
     res.json({
       session: data.session,
@@ -44,10 +63,7 @@ export const getCurrentUser = async (req: AuthRequest, res: Response, next: Next
   if (!req.user) return next(new AppError('Not authenticated', 401));
 
   try {
-    const user = await prisma.user.findUnique({
-      where: { id: req.user.id },
-      include: { society: true }
-    });
+    const user = await userRepository.findByIdWithSociety(req.user.id);
     
     if (!user) return next(new AppError('User not found', 404));
     
@@ -72,17 +88,31 @@ export const register = async (req: AuthRequest, res: Response, next: NextFuncti
     if (authError) return next(new AppError(authError.message, 400));
 
     // 2. Create user profile in Prisma
-    const newUser = await prisma.user.create({
-      data: {
-        id: authData.user.id,
-        email,
-        name,
-        role: role as Role,
-        societyId,
-      },
+    const newUser = await userRepository.createWithExternalId({
+      id: authData.user.id,
+      email,
+      name,
+      role: role as Role,
+      societyId: societyId || null,
     });
 
-    logger.info(`New user registered: ${email} with role ${role}`);
+    logger.info({
+      actorId: req.user?.id,
+      resource: 'user',
+      action: 'register',
+      status: 'success',
+      targetUserId: newUser.id,
+      targetRole: role,
+    });
+
+    if (req.user?.id) {
+      await writeAuditLog(req.user.id, 'REGISTER_USER', 'USER', {
+        targetUserId: newUser.id,
+        email,
+        role,
+        societyId: societyId || null,
+      });
+    }
 
     res.status(201).json(newUser);
   } catch (err: any) {
@@ -102,15 +132,24 @@ export const changeRole = async (req: AuthRequest, res: Response, next: NextFunc
     if (authError) return next(new AppError(authError.message, 400));
 
     // Update Prisma
-    const updatedUser = await prisma.user.update({
-      where: { id: userId },
-      data: {
-        role: newRole as Role,
-        societyId: societyId || null,
-      },
+    const updatedUser = await userRepository.updateRoleAndSociety(userId, newRole as Role, societyId || null);
+
+    logger.info({
+      actorId: req.user?.id,
+      resource: 'user',
+      action: 'change_role',
+      status: 'success',
+      targetUserId: userId,
+      targetRole: newRole,
     });
 
-    logger.info(`User ${userId} role changed to ${newRole}`);
+    if (req.user?.id) {
+      await writeAuditLog(req.user.id, 'CHANGE_ROLE', 'USER', {
+        targetUserId: userId,
+        newRole,
+        societyId: societyId || null,
+      });
+    }
 
     res.json(updatedUser);
   } catch (err: any) {

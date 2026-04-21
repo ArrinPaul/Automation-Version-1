@@ -1,7 +1,7 @@
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { cn } from '@/lib/utils';
-import { LayoutDashboard, ReceiptText, Users, Calendar, Award, Megaphone, Settings, LogOut } from 'lucide-react';
+import { LayoutDashboard, ReceiptText, Users, Calendar, Award, Megaphone, Settings, LogOut, FileText, Printer } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 const Sidebar: React.FC = () => {
@@ -13,8 +13,14 @@ const Sidebar: React.FC = () => {
     { label: 'Transactions', path: '/transactions', icon: ReceiptText, roles: ['MANAGEMENT'] },
     { label: 'Societies', path: '/societies', icon: Users, roles: ['MANAGEMENT', 'FACULTY_ADVISOR', 'SOCIETY_OB'] },
     { label: 'Events', path: '/events', icon: Calendar, roles: ['MANAGEMENT', 'FACULTY_ADVISOR', 'SOCIETY_OB', 'MEMBER'] },
+    { label: 'Calendar', path: '/calendar', icon: Calendar, roles: ['MANAGEMENT', 'FACULTY_ADVISOR', 'SOCIETY_OB', 'MEMBER'] },
     { label: 'Projects', path: '/projects', icon: Award, roles: ['MANAGEMENT', 'FACULTY_ADVISOR', 'SOCIETY_OB'] },
     { label: 'Announcements', path: '/announcements', icon: Megaphone, roles: ['MANAGEMENT', 'FACULTY_ADVISOR', 'SOCIETY_OB', 'MEMBER'] },
+    { label: 'Communications', path: '/communications', icon: Megaphone, roles: ['MANAGEMENT', 'FACULTY_ADVISOR', 'SOCIETY_OB', 'MEMBER'] },
+    { label: 'User Admin', path: '/admin/users', icon: Settings, roles: ['MANAGEMENT'] },
+    { label: 'Registry', path: '/admin/registry', icon: Users, roles: ['MANAGEMENT'] },
+    { label: 'Financial Reports', path: '/reports/financial', icon: FileText, roles: ['MANAGEMENT'] },
+    { label: 'Quarterly Print', path: '/reports/quarterly-print', icon: Printer, roles: ['MANAGEMENT'] },
   ];
 
   const filteredNav = navItems.filter(item =>
