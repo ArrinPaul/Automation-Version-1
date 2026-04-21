@@ -1,9 +1,10 @@
-import { Request, Response } from 'express';
+import { Response, NextFunction } from 'express';
 import { societyRepository } from '../repositories/societyRepository';
 import { AuthRequest } from '../middleware/verifyToken';
 import { Role } from '@prisma/client';
+import { AppError } from '../middleware/errorHandler';
 
-export const getSocieties = async (req: AuthRequest, res: Response) => {
+export const getSocieties = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const where: any = {};
     if (req.user?.role !== Role.MANAGEMENT && req.user?.societyId) {
@@ -11,28 +12,28 @@ export const getSocieties = async (req: AuthRequest, res: Response) => {
     }
     const societies = await societyRepository.findAll(where);
     res.json(societies);
-  } catch (err) {
-    res.status(500).json({ error: 'Internal server error' });
+  } catch (err: any) {
+    return next(new AppError(err?.message || 'Failed to fetch societies', 500));
   }
 };
 
-export const getSocietyById = async (req: AuthRequest, res: Response) => {
+export const getSocietyById = async (req: AuthRequest, res: Response, next: NextFunction) => {
   const id = req.params.id as string;
   try {
     const society = await societyRepository.findById(id);
-    if (!society) return res.status(404).json({ error: 'Society not found' });
+    if (!society) return next(new AppError('Society not found', 404));
     res.json(society);
-  } catch (err) {
-    res.status(500).json({ error: 'Internal server error' });
+  } catch (err: any) {
+    return next(new AppError(err?.message || 'Failed to fetch society', 500));
   }
 };
 
-export const updateSociety = async (req: AuthRequest, res: Response) => {
+export const updateSociety = async (req: AuthRequest, res: Response, next: NextFunction) => {
   const id = req.params.id as string;
   try {
     const society = await societyRepository.update(id, req.body);
     res.json(society);
-  } catch (err) {
-    res.status(500).json({ error: 'Internal server error' });
+  } catch (err: any) {
+    return next(new AppError(err?.message || 'Failed to update society', 500));
   }
 };

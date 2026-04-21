@@ -1,7 +1,8 @@
-import { Request, Response } from 'express';
+import { Response, NextFunction } from 'express';
 import multer from 'multer';
 import { uploadToSupabase, uploadToS3 } from '../services/storageService';
 import { AuthRequest } from '../middleware/verifyToken';
+import { AppError } from '../middleware/errorHandler';
 
 const storage = multer.memoryStorage();
 const upload = multer({
@@ -9,8 +10,8 @@ const upload = multer({
   limits: { fileSize: 50 * 1024 * 1024 } // 50MB limit
 });
 
-export const uploadFile = async (req: AuthRequest, res: Response) => {
-  if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+export const uploadFile = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  if (!req.file) return next(new AppError('No file uploaded', 400));
 
   const { type, societyId } = req.body;
   const file = req.file;
@@ -29,8 +30,8 @@ export const uploadFile = async (req: AuthRequest, res: Response) => {
     }
 
     res.json({ url });
-  } catch (err) {
-    res.status(500).json({ error: 'Upload failed' });
+  } catch (err: any) {
+    return next(new AppError(err?.message || 'Upload failed', 500));
   }
 };
 

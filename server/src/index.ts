@@ -12,6 +12,10 @@ import uploadRoutes from './routes/uploadRoutes';
 import auditRoutes from './routes/auditRoutes';
 import societyRoutes from './routes/societyRoutes';
 import eventRoutes from './routes/eventRoutes';
+import projectRoutes from './routes/projectRoutes';
+import announcementRoutes from './routes/announcementRoutes';
+import memberRoutes from './routes/memberRoutes';
+import officeBearerRoutes from './routes/officeBearerRoutes';
 
 const app = express();
 
@@ -37,6 +41,10 @@ app.use('/api/upload', uploadRoutes);
 app.use('/api/audit', auditRoutes);
 app.use('/api/societies', societyRoutes);
 app.use('/api/events', eventRoutes);
+app.use('/api/projects', projectRoutes);
+app.use('/api/announcements', announcementRoutes);
+app.use('/api/members', memberRoutes);
+app.use('/api/office-bearers', officeBearerRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({ 

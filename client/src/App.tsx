@@ -4,6 +4,10 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import Dashboard from './features/Dashboard';
 import TransactionsPage from './features/TransactionsPage';
+import SocietiesPage from './features/SocietiesPage';
+import EventsPage from './features/EventsPage';
+import ProjectsPage from './features/ProjectsPage';
+import AnnouncementsPage from './features/AnnouncementsPage';
 import Login from './features/Login';
 import Sidebar from './components/layout/Sidebar';
 import { Toaster } from 'sonner';
@@ -48,6 +52,26 @@ const App: React.FC = () => {
             <Route path="/transactions" element={
               <ProtectedRoute>
                 <TransactionsPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/societies" element={
+              <ProtectedRoute>
+                <SocietiesPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/events" element={
+              <ProtectedRoute>
+                <EventsPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/projects" element={
+              <ProtectedRoute>
+                <ProjectsPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/announcements" element={
+              <ProtectedRoute>
+                <AnnouncementsPage />
               </ProtectedRoute>
             } />
           </Routes>
