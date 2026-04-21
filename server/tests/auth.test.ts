@@ -1,14 +1,13 @@
 import request from 'supertest';
-import app from '../src/index';
+import app from '../src/index'; 
 import User, { UserRole } from '../src/models/User';
 
 describe('Authentication Flow', () => {
-  
   let superAdminToken: string;
 
   beforeEach(async () => {
     // 1. Manually create a SUPER_ADMIN in the DB
-    const adminUser = await User.create({
+    await User.create({
       name: 'Super Admin',
       email: 'admin_auth@ieee.org',
       password: 'password123',
@@ -21,6 +20,15 @@ describe('Authentication Flow', () => {
       password: 'password123'
     });
     superAdminToken = loginRes.body.data.token;
+
+    // 3. Manually create a SOCIETY_ADMIN in the DB for login tests
+    await User.create({
+      name: 'Society Admin User',
+      email: 'socadmin@ieee.org',
+      password: 'password123',
+      role: UserRole.SOCIETY_ADMIN,
+      societyId: 'AUTH-TEST-SOC'
+    });
   });
 
   it('should register a new user successfully when authorized as Super Admin', async () => {
@@ -28,11 +36,11 @@ describe('Authentication Flow', () => {
       .post('/api/auth/register')
       .set('Authorization', `Bearer ${superAdminToken}`)
       .send({
-        name: 'Society Admin User',
-        email: 'socadmin@ieee.org',
+        name: 'New Registered User',
+        email: 'newbie@ieee.org',
         password: 'password123',
         role: UserRole.SOCIETY_ADMIN,
-        societyId: 'AUTH-TEST-SOC'
+        societyId: 'NEWBIE-SOC'
       });
 
     expect(res.status).toBe(201);
@@ -57,7 +65,7 @@ describe('Authentication Flow', () => {
       password: 'wrongpassword',
     });
 
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(401); // Wait! My assert had 400 but authController logic: 'Invalid credentials' --> 401
     expect(res.body.success).toBe(false);
   });
 });

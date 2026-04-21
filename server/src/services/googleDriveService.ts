@@ -22,7 +22,9 @@ if (credentialsPath) {
     console.error('Failed to initialize Google Drive API. Verify your credentials.', err);
   }
 } else {
-  console.warn('Google Drive API disabled: GOOGLE_SERVICE_ACCOUNT_KEY_PATH is not set in .env');
+    if (process.env.NODE_ENV !== 'test') {
+      console.warn('Google Drive API disabled: GOOGLE_SERVICE_ACCOUNT_KEY_PATH is not set in .env');
+    }
 }
 
 /**

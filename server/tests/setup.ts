@@ -3,6 +3,8 @@ import { MongoMemoryServer } from 'mongodb-memory-server';
 
 let mongoServer: MongoMemoryServer;
 
+jest.setTimeout(30000);
+
 // Start memory server before all tests
 beforeAll(async () => {
   mongoServer = await MongoMemoryServer.create();

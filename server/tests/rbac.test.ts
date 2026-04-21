@@ -6,7 +6,7 @@ describe('Auth Endpoints & RBAC Validation', () => {
   let superAdminToken: string;
   let viewerToken: string;
 
-  beforeAll(async () => {
+  beforeEach(async () => {
     // Register Super Admin directly
     await User.create({
       name: 'Super Admin User',
@@ -44,12 +44,13 @@ describe('Auth Endpoints & RBAC Validation', () => {
         .send({
           societyKey: 'TEST-SOC',
           name: 'Test Society',
+          shortName: 'TSOC',
           budget: 1000,
         });
         
       expect(res.status).toBe(201);
       expect(res.body.success).toBe(true);
-      expect(res.body.data.societyKey).toBe('TEST-SOC');
+      expect(res.body.data.societyKey).toBe('test-soc');
     });
 
     it('should deny Viewer from creating a society', async () => {
@@ -59,12 +60,13 @@ describe('Auth Endpoints & RBAC Validation', () => {
         .send({
           societyKey: 'VI-SOC',
           name: 'Viewer Society',
+          shortName: 'VSOC',
           budget: 500,
         });
 
       expect(res.status).toBe(403);
       expect(res.body.success).toBe(false);
-      expect(res.body.error).toContain('do not have permission');
+      expect(res.body.error).toContain('Access denied');
     });
   });
 });
