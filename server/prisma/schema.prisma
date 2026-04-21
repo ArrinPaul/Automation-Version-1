@@ -1,0 +1,245 @@
+// schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String   @id @default(uuid())
+  email         String   @unique
+  name          String
+  role          Role
+  societyId     String?
+  society       Society? @relation(fields: [societyId], references: [id])
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  transactions  Transaction[]
+  announcements Announcement[]
+  auditLogs     AuditLog[]
+
+  @@map("users")
+}
+
+enum Role {
+  MANAGEMENT
+  FACULTY_ADVISOR
+  SOCIETY_OB
+  MEMBER
+}
+
+model Society {
+  id              String  @id @default(uuid())
+  societyKey      String  @unique
+  name            String
+  shortName       String
+  type            SocietyType
+  budget          Decimal @db.Decimal(12, 2)
+  balance         Decimal @db.Decimal(12, 2)
+  logoUrl         String?
+  advisorSigUrl   String?
+  ieeePortalUrl   String?
+  bangaloreSectionUrl String?
+
+  users           User[]
+  transactions    Transaction[]
+  events          Event[]
+  projects        Project[]
+  calendarEvents  CalendarEvent[]
+  announcements   Announcement[]
+  officeBearers   OfficeBearer[]
+  members         Member[]
+
+  @@map("societies")
+}
+
+enum SocietyType {
+  TECHNICAL_SOCIETY
+  AFFINITY_GROUP
+  COUNCIL
+}
+
+model Transaction {
+  id          String          @id @default(uuid())
+  societyId   String
+  society     Society         @relation(fields: [societyId], references: [id])
+  amount      Decimal         @db.Decimal(12, 2)
+  type        TransactionType
+  category    String
+  description String
+  date        DateTime
+  status      TxStatus        @default(PENDING)
+  approvedBy  String?
+  receiptUrl  String?
+  createdById String
+  createdBy   User            @relation(fields: [createdById], references: [id])
+  createdAt   DateTime        @default(now())
+
+  @@map("transactions")
+}
+
+enum TransactionType {
+  INCOME
+  EXPENSE
+}
+
+enum TxStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model Event {
+  id              String   @id @default(uuid())
+  societyId       String
+  society         Society  @relation(fields: [societyId], references: [id])
+  title           String
+  date            DateTime
+  time            String?
+  venue           String?
+  type            String
+  participants    Int
+  participantType String?
+  description     String
+  outcome         String?
+  highlights      String?
+  takeaways       String?
+  followUpPlan    String?
+  collaboration   String?
+  organizerName   String?
+  organizerDes    String?
+  imageUrls       String[]
+  speakers        Speaker[]
+  createdAt       DateTime @default(now())
+
+  @@map("events")
+}
+
+model Speaker {
+  id                String  @id @default(uuid())
+  eventId           String
+  event             Event   @relation(fields: [eventId], references: [id])
+  name              String
+  designation       String?
+  organization      String?
+  presentationTitle String?
+  profile           String?
+
+  @@map("speakers")
+}
+
+model Project {
+  id               String        @id @default(uuid())
+  societyId        String
+  society          Society       @relation(fields: [societyId], references: [id])
+  title            String
+  category         ProjectCategory
+  sanctioningBody  String
+  amountSanctioned Decimal       @db.Decimal(12, 2)
+  startDate        DateTime
+  status           ProjectStatus
+  description      String
+  createdAt        DateTime      @default(now())
+
+  @@map("projects")
+}
+
+enum ProjectCategory {
+  TECHNICAL_PROJECT
+  TRAVEL_GRANT
+  SCHOLARSHIP
+  AWARD
+}
+
+enum ProjectStatus {
+  PROPOSED
+  ONGOING
+  COMPLETED
+  CANCELLED
+  ANNOUNCED
+  AWARDED
+}
+
+model CalendarEvent {
+  id          String              @id @default(uuid())
+  societyId   String
+  society     Society             @relation(fields: [societyId], references: [id])
+  title       String
+  date        DateTime
+  time        String?
+  venue       String?
+  description String?
+  status      CalendarEventStatus
+  createdAt   DateTime            @default(now())
+
+  @@map("calendar_events")
+}
+
+enum CalendarEventStatus {
+  PROPOSED
+  CONFIRMED
+  COMPLETED
+  CANCELLED
+}
+
+model Announcement {
+  id             String           @id @default(uuid())
+  title          String
+  message        String
+  targetAudience AnnouncementAudience
+  societyId      String?
+  society        Society?         @relation(fields: [societyId], references: [id])
+  senderId       String
+  sender         User             @relation(fields: [senderId], references: [id])
+  createdAt      DateTime         @default(now())
+
+  @@map("announcements")
+}
+
+enum AnnouncementAudience {
+  ALL
+  LEADERSHIP
+  SOCIETY
+}
+
+model OfficeBearer {
+  id          String  @id @default(uuid())
+  societyId   String
+  society     Society @relation(fields: [societyId], references: [id])
+  name        String
+  position    String
+  email       String
+  phone       String?
+
+  @@map("office_bearers")
+}
+
+model Member {
+  id            String  @id @default(uuid())
+  societyId     String
+  society     Society @relation(fields: [societyId], references: [id])
+  ieeeId        String?
+  name          String
+  email         String
+  contactNumber String?
+  grade         String?
+
+  @@map("members")
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  action    String
+  resource  String
+  details   Json?
+  createdAt DateTime @default(now())
+
+  @@map("audit_logs")
+}

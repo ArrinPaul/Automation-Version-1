@@ -1,66 +1,47 @@
-import { Response } from 'express';
-import { AuthRequest } from '../middleware/authMiddleware';
-import { EventReport, UserRole } from '../models';
+import { Request, Response } from 'express';
+import { eventRepository } from '../repositories/eventRepository';
+import { AuthRequest } from '../middleware/verifyToken';
+import { z } from 'zod';
+import { Role } from '@prisma/client';
 
-export const getEvents = async (req: AuthRequest, res: Response): Promise<void> => {
+export const getEvents = async (req: AuthRequest, res: Response) => {
+  const where: any = {};
+  if (req.user?.role !== Role.MANAGEMENT && req.user?.societyId) {
+    where.societyId = req.user.societyId;
+  }
   try {
-    const user = req.user!;
-    const { societyId, type } = req.query;
-    let filter: any = {};
-
-    if (user.role === UserRole.SOCIETY_ADMIN || user.role === UserRole.VIEWER) {
-      filter.societyId = user.societyId;
-    } else if (societyId) {
-      filter.societyId = societyId;
-    }
-    if (type) filter.type = type;
-
-    const events = await EventReport.find(filter).sort({ date: -1 }).populate('createdBy', 'name');
-    res.status(200).json({ success: true, data: events, count: events.length });
-  } catch (error) {
-    res.status(500).json({ success: false, error: 'Failed to fetch events' });
+    const events = await eventRepository.findAll(where);
+    res.json(events);
+  } catch (err) {
+    res.status(500).json({ error: 'Internal server error' });
   }
 };
 
-export const getEvent = async (req: AuthRequest, res: Response): Promise<void> => {
+export const createEvent = async (req: AuthRequest, res: Response) => {
   try {
-    const event = await EventReport.findById(req.params.id).populate('createdBy', 'name');
-    if (!event) { res.status(404).json({ success: false, error: 'Event not found' }); return; }
-    res.status(200).json({ success: true, data: event });
-  } catch (error) {
-    res.status(500).json({ success: false, error: 'Failed to fetch event' });
+    const event = await eventRepository.create(req.body);
+    res.status(201).json(event);
+  } catch (err) {
+    res.status(500).json({ error: 'Internal server error' });
   }
 };
 
-export const createEvent = async (req: AuthRequest, res: Response): Promise<void> => {
+export const updateEvent = async (req: AuthRequest, res: Response) => {
+  const id = req.params.id as string;
   try {
-    const user = req.user!;
-    if (user.role === UserRole.SOCIETY_ADMIN && user.societyId !== req.body.societyId) {
-      res.status(403).json({ success: false, error: 'Cannot create event for another society' }); return;
-    }
-    const event = await EventReport.create({ ...req.body, createdBy: user._id });
-    res.status(201).json({ success: true, data: event });
-  } catch (error) {
-    res.status(500).json({ success: false, error: 'Failed to create event' });
+    const event = await eventRepository.update(id, req.body);
+    res.json(event);
+  } catch (err) {
+    res.status(500).json({ error: 'Internal server error' });
   }
 };
 
-export const updateEvent = async (req: AuthRequest, res: Response): Promise<void> => {
+export const deleteEvent = async (req: AuthRequest, res: Response) => {
+  const id = req.params.id as string;
   try {
-    const event = await EventReport.findByIdAndUpdate(req.params.id, { $set: req.body }, { new: true, runValidators: true });
-    if (!event) { res.status(404).json({ success: false, error: 'Event not found' }); return; }
-    res.status(200).json({ success: true, data: event });
-  } catch (error) {
-    res.status(500).json({ success: false, error: 'Failed to update event' });
-  }
-};
-
-export const deleteEvent = async (req: AuthRequest, res: Response): Promise<void> => {
-  try {
-    const event = await EventReport.findByIdAndDelete(req.params.id);
-    if (!event) { res.status(404).json({ success: false, error: 'Event not found' }); return; }
-    res.status(200).json({ success: true, message: 'Event deleted' });
-  } catch (error) {
-    res.status(500).json({ success: false, error: 'Failed to delete event' });
+    await eventRepository.delete(id);
+    res.status(204).send();
+  } catch (err) {
+    res.status(500).json({ error: 'Internal server error' });
   }
 };

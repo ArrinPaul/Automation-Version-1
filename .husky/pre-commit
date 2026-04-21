@@ -1,0 +1,5 @@
+#!/bin/sh
+. "$(dirname "$0")/_/husky.sh"
+
+cd client && npm run lint && npx tsc --noEmit
+cd ../server && npm run build
