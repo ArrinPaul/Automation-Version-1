@@ -15,7 +15,10 @@ const router = Router();
 
 router.use(verifyToken);
 
-router.get('/', getTransactions);
+router.get('/',
+  requireRole([Role.MANAGEMENT]),
+  getTransactions
+);
 
 router.post('/',
   requireRole([Role.MANAGEMENT, Role.FACULTY_ADVISOR, Role.SOCIETY_OB]),

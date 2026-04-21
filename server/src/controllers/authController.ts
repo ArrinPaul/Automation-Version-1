@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { Prisma, Role } from '@prisma/client';
 import { createClient } from '@supabase/supabase-js';
+import { z } from 'zod';
 import { AuthRequest } from '../middleware/verifyToken';
 import { AppError } from '../middleware/errorHandler';
 import logger from '../config/logger';
@@ -25,20 +26,82 @@ const writeAuditLog = async (
   }
 };
 
-export const login = async (req: Request, res: Response, next: NextFunction) => {
-  const { email, password } = req.body;
+const loginSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(6),
+});
 
+const roleSchema = z.enum(['MANAGEMENT', 'FACULTY_ADVISOR', 'SOCIETY_OB', 'MEMBER']);
+
+const registerSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(6),
+  name: z.string().min(2),
+  role: roleSchema,
+  societyId: z.string().uuid().nullable().optional(),
+});
+
+const changeRoleSchema = z.object({
+  userId: z.string().uuid(),
+  newRole: roleSchema,
+  societyId: z.string().uuid().nullable().optional(),
+});
+
+const logAuthFailure = (action: string, error: unknown, metadata?: Record<string, unknown>) => {
+  logger.warn({ action, status: 'failed', error, ...metadata }, 'Authentication flow failed');
+};
+
+const toAppError = (error: unknown, fallbackMessage: string, fallbackStatusCode = 500) => {
+  if (error instanceof AppError) {
+    return error;
+  }
+
+  return new AppError(fallbackMessage, fallbackStatusCode);
+};
+
+export const login = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { data, error } = await supabase.auth.signInWithPassword({
+    const parseResult = loginSchema.safeParse(req.body);
+
+    if (!parseResult.success) {
+      return next(new AppError('Invalid login payload', 400));
+    }
+
+    const { email, password } = parseResult.data;
+
+    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
 
-    if (error) return next(new AppError(error.message, 401));
+    if (authError) {
+      logAuthFailure('login', authError, { email });
+      return next(new AppError(authError.message, 401));
+    }
 
-    const user = await userRepository.findByEmailWithSociety(email);
+    if (!authData.user || !authData.session) {
+      logAuthFailure('login', 'missing auth data', { email });
+      return next(new AppError('Authentication failed', 401));
+    }
 
-    if (!user) return next(new AppError('User profile not found', 404));
+    const user = await userRepository.findByIdWithSociety(authData.user.id);
+
+    if (!user) {
+      logAuthFailure('login', 'profile missing', { email, authUserId: authData.user.id });
+      return next(new AppError('User profile not found', 404));
+    }
+
+    const { error: syncError } = await supabase.auth.admin.updateUserById(user.id, {
+      user_metadata: {
+        role: user.role,
+        societyId: user.societyId,
+        name: user.name,
+      },
+    });
+
+    if (syncError) {
+      logger.warn({ userId: user.id, error: syncError }, 'Failed to sync auth metadata during login');
+    }
 
     logger.info({
       actorId: user.id,
@@ -51,11 +114,12 @@ export const login = async (req: Request, res: Response, next: NextFunction) => 
     await writeAuditLog(user.id, 'LOGIN', 'AUTH', { email });
 
     res.json({
-      session: data.session,
+      session: authData.session,
       user: user,
     });
-  } catch (err: any) {
-    next(err);
+  } catch (err: unknown) {
+    logAuthFailure('login', err);
+    next(toAppError(err, 'Login failed'));
   }
 };
 
@@ -68,13 +132,20 @@ export const getCurrentUser = async (req: AuthRequest, res: Response, next: Next
     if (!user) return next(new AppError('User not found', 404));
     
     res.json(user);
-  } catch (err: any) {
-    next(err);
+  } catch (err: unknown) {
+    logger.warn({ actorId: req.user?.id, error: err }, 'Failed to retrieve current user profile');
+    next(toAppError(err, 'Failed to retrieve current user profile'));
   }
 };
 
 export const register = async (req: AuthRequest, res: Response, next: NextFunction) => {
-  const { email, password, name, role, societyId } = req.body;
+  const parseResult = registerSchema.safeParse(req.body);
+
+  if (!parseResult.success) {
+    return next(new AppError('Invalid register payload', 400));
+  }
+
+  const { email, password, name, role, societyId } = parseResult.data;
 
   try {
     // 1. Create user in Supabase Auth
@@ -115,13 +186,20 @@ export const register = async (req: AuthRequest, res: Response, next: NextFuncti
     }
 
     res.status(201).json(newUser);
-  } catch (err: any) {
-    next(err);
+  } catch (err: unknown) {
+    logger.warn({ actorId: req.user?.id, error: err, email }, 'Failed to register user');
+    next(toAppError(err, 'Failed to register user'));
   }
 };
 
 export const changeRole = async (req: AuthRequest, res: Response, next: NextFunction) => {
-  const { userId, newRole, societyId } = req.body;
+  const parseResult = changeRoleSchema.safeParse(req.body);
+
+  if (!parseResult.success) {
+    return next(new AppError('Invalid role change payload', 400));
+  }
+
+  const { userId, newRole, societyId } = parseResult.data;
 
   try {
     // Update Supabase metadata
@@ -152,7 +230,8 @@ export const changeRole = async (req: AuthRequest, res: Response, next: NextFunc
     }
 
     res.json(updatedUser);
-  } catch (err: any) {
-    next(err);
+  } catch (err: unknown) {
+    logger.warn({ actorId: req.user?.id, error: err, targetUserId: userId }, 'Failed to change user role');
+    next(toAppError(err, 'Failed to change user role'));
   }
 };

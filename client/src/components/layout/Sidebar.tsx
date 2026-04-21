@@ -3,10 +3,19 @@ import { useAuth } from '@/context/AuthContext';
 import { cn } from '@/lib/utils';
 import { LayoutDashboard, ReceiptText, Users, Calendar, Award, Megaphone, Settings, LogOut, FileText, Printer } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { toast } from 'sonner';
 
 const Sidebar: React.FC = () => {
   const { profile, signOut } = useAuth();
   const location = useLocation();
+
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+    } catch {
+      toast.error('Unable to terminate session. Please retry.');
+    }
+  };
 
   const navItems = [
     { label: 'Dashboard', path: '/', icon: LayoutDashboard, roles: ['MANAGEMENT', 'FACULTY_ADVISOR', 'SOCIETY_OB', 'MEMBER'] },
@@ -67,7 +76,7 @@ const Sidebar: React.FC = () => {
         <Button
           variant="outline"
           className="w-full text-[10px] h-8"
-          onClick={signOut}
+          onClick={handleSignOut}
         >
           <LogOut className="w-3 h-3 mr-2" />
           Terminate_Session

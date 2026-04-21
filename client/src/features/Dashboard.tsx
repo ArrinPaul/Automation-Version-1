@@ -1,22 +1,11 @@
 import React from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { useQuery } from '@tanstack/react-query';
-import apiClient from '@/services/apiClient';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Skeleton } from '@/components/ui/skeleton';
 import { motion } from 'framer-motion';
 import { TrendingUp, Users, Calendar, Award } from 'lucide-react';
 
 const Dashboard: React.FC = () => {
   const { profile } = useAuth();
-
-  const { data: societies, isLoading: societiesLoading } = useQuery({
-    queryKey: ['societies'],
-    queryFn: async () => {
-      const res = await apiClient.get('/societies');
-      return res.data;
-    }
-  });
 
   const kpis = [
     { title: 'Available Balance', value: profile?.society?.balance || '₹0.00', icon: TrendingUp, color: 'text-accent' },
@@ -34,7 +23,7 @@ const Dashboard: React.FC = () => {
       >
         <div>
           <h1 className="text-4xl font-display uppercase tracking-tighter text-white">Terminal_Dashboard</h1>
-          <p className="text-muted-foreground font-mono text-sm">System Status: <span className="text-accent">ONLINE</span> // Welcome, {profile?.name}</p>
+          <p className="text-muted-foreground font-mono text-sm">System Status: <span className="text-accent">ONLINE</span> | Welcome, {profile?.name}</p>
         </div>
         <div className="text-right font-mono text-xs text-muted-foreground">
           {new Date().toISOString()}

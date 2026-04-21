@@ -1,7 +1,8 @@
-import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { User } from '@supabase/supabase-js';
 import apiClient from '../services/apiClient';
+import { toast } from 'sonner';
 
 interface UserProfile {
   id: string;
@@ -20,49 +21,127 @@ interface AuthContextType {
   user: User | null;
   profile: UserProfile | null;
   loading: boolean;
+  refreshProfile: () => Promise<void>;
   signOut: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+const useSupabaseAuth = () => {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const isMounted = useRef(true);
 
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
-      if (session?.user) fetchProfile();
-      setLoading(false);
-    });
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-      if (session?.user) fetchProfile();
-      else setProfile(null);
-      setLoading(false);
-    });
-
-    return () => subscription.unsubscribe();
+  const fetchProfile = useCallback(async () => {
+    const res = await apiClient.get<UserProfile>('/auth/me');
+    if (isMounted.current) {
+      setProfile(res.data);
+    }
   }, []);
 
-  const fetchProfile = async () => {
+  const refreshProfile = useCallback(async () => {
     try {
-      const res = await apiClient.get<UserProfile>('/auth/me');
-      setProfile(res.data);
+      await fetchProfile();
     } catch (err) {
       console.error('Failed to fetch profile', err);
+      if (isMounted.current) {
+        setProfile(null);
+      }
+      toast.error('Unable to load profile. Please sign in again.');
     }
-  };
+  }, [fetchProfile]);
 
-  const signOut = async () => {
-    await supabase.auth.signOut();
+  useEffect(() => {
+    isMounted.current = true;
+
+    const initializeAuth = async () => {
+      if (isMounted.current) {
+        setLoading(true);
+      }
+
+      try {
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+
+        const sessionUser = session?.user ?? null;
+        if (isMounted.current) {
+          setUser(sessionUser);
+        }
+
+        if (sessionUser) {
+          await refreshProfile();
+        } else {
+          isMounted.current && setProfile(null);
+        }
+      } finally {
+        if (isMounted.current) {
+          setLoading(false);
+        }
+      }
+    };
+
+    void initializeAuth();
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      if (isMounted.current) {
+        setLoading(true);
+      }
+
+      const sessionUser = session?.user ?? null;
+      if (isMounted.current) {
+        setUser(sessionUser);
+      }
+
+      if (sessionUser) {
+        await refreshProfile();
+      } else {
+        isMounted.current && setProfile(null);
+      }
+
+      if (isMounted.current) {
+        setLoading(false);
+      }
+    });
+
+    return () => {
+      isMounted.current = false;
+      subscription.unsubscribe();
+    };
+  }, [refreshProfile]);
+
+  const signOut = useCallback(async () => {
+    const { error } = await supabase.auth.signOut();
+
+    if (error) {
+      toast.error('Sign out failed. Please try again.');
+      throw error;
+    }
+
+    if (isMounted.current) {
+      setUser(null);
+      setProfile(null);
+    }
+  }, []);
+
+  return {
+    user,
+    profile,
+    loading,
+    refreshProfile,
+    signOut,
   };
+};
+
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { user, profile, loading, refreshProfile, signOut } = useSupabaseAuth();
 
   const contextValue = useMemo(
-    () => ({ user, profile, loading, signOut }),
-    [user, profile, loading]
+    () => ({ user, profile, loading, refreshProfile, signOut }),
+    [user, profile, loading, refreshProfile, signOut]
   );
 
   return (
