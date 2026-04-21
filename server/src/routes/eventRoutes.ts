@@ -1,16 +1,17 @@
 import { Router } from 'express';
-import authMiddleware from '../middleware/authMiddleware';
-import roleMiddleware from '../middleware/roleMiddleware';
-import { UserRole } from '../models';
-import { getEvents, getEvent, createEvent, updateEvent, deleteEvent } from '../controllers/eventController';
+import { verifyToken } from '../middleware/verifyToken';
+import { requireRole } from '../middleware/requireRole';
+import { requireSocietyAccess } from '../middleware/requireSocietyAccess';
+import { Role } from '@prisma/client';
+import { getEvents, createEvent, updateEvent, deleteEvent } from '../controllers/eventController';
 
 const router = Router();
-router.use(authMiddleware);
+
+router.use(verifyToken);
 
 router.get('/', getEvents);
-router.get('/:id', getEvent);
-router.post('/', roleMiddleware([UserRole.SUPER_ADMIN, UserRole.SB_TREASURER, UserRole.SOCIETY_ADMIN]), createEvent);
-router.put('/:id', roleMiddleware([UserRole.SUPER_ADMIN, UserRole.SB_TREASURER, UserRole.SOCIETY_ADMIN]), updateEvent);
-router.delete('/:id', roleMiddleware([UserRole.SUPER_ADMIN, UserRole.SB_TREASURER]), deleteEvent);
+router.post('/', requireRole([Role.MANAGEMENT, Role.FACULTY_ADVISOR, Role.SOCIETY_OB]), requireSocietyAccess(), createEvent);
+router.put('/:id', requireRole([Role.MANAGEMENT, Role.FACULTY_ADVISOR, Role.SOCIETY_OB]), requireSocietyAccess(), updateEvent);
+router.delete('/:id', requireRole([Role.MANAGEMENT, Role.FACULTY_ADVISOR]), requireSocietyAccess(), deleteEvent);
 
 export default router;

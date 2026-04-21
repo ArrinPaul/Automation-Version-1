@@ -1,34 +1,42 @@
 import { Router } from 'express';
-import authMiddleware from '../middleware/authMiddleware';
-import roleMiddleware from '../middleware/roleMiddleware';
-import { UserRole } from '../models';
+import { verifyToken } from '../middleware/verifyToken';
+import { requireRole } from '../middleware/requireRole';
+import { requireSocietyAccess } from '../middleware/requireSocietyAccess';
+import { Role } from '@prisma/client';
 import {
   getTransactions,
-  getTransaction,
   createTransaction,
   updateTransaction,
-  approveTransaction,
   deleteTransaction,
+  approveTransaction
 } from '../controllers/transactionController';
 
 const router = Router();
 
-router.use(authMiddleware);
+router.use(verifyToken);
 
-// Read — all authenticated (scoped in controller)
 router.get('/', getTransactions);
-router.get('/:id', getTransaction);
 
-// Create — Admin, Treasurer, Society Admin
-router.post('/', roleMiddleware([UserRole.SUPER_ADMIN, UserRole.SB_TREASURER, UserRole.SOCIETY_ADMIN]), createTransaction);
+router.post('/',
+  requireRole([Role.MANAGEMENT, Role.FACULTY_ADVISOR, Role.SOCIETY_OB]),
+  requireSocietyAccess(),
+  createTransaction
+);
 
-// Update — Creator or Admin (checked in controller)
-router.put('/:id', roleMiddleware([UserRole.SUPER_ADMIN, UserRole.SB_TREASURER, UserRole.SOCIETY_ADMIN]), updateTransaction);
+router.patch('/:id/approve',
+  requireRole([Role.MANAGEMENT]),
+  approveTransaction
+);
 
-// Approve — Treasurer / Super Admin only
-router.patch('/:id/approve', roleMiddleware([UserRole.SUPER_ADMIN, UserRole.SB_TREASURER]), approveTransaction);
+router.put('/:id',
+  requireRole([Role.MANAGEMENT, Role.FACULTY_ADVISOR, Role.SOCIETY_OB]),
+  requireSocietyAccess(),
+  updateTransaction
+);
 
-// Delete — Admin only
-router.delete('/:id', roleMiddleware([UserRole.SUPER_ADMIN]), deleteTransaction);
+router.delete('/:id',
+  requireRole([Role.MANAGEMENT]),
+  deleteTransaction
+);
 
 export default router;
