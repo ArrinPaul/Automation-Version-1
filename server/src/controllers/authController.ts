@@ -1,7 +1,9 @@
-import { Request, Response } from 'express';
+import { Request, Response, NextFunction } from 'express';
 import { PrismaClient, Role } from '@prisma/client';
 import { createClient } from '@supabase/supabase-js';
 import { AuthRequest } from '../middleware/verifyToken';
+import { AppError } from '../middleware/errorHandler';
+import logger from '../config/logger';
 
 const prisma = new PrismaClient();
 const supabase = createClient(
@@ -9,7 +11,7 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-export const login = async (req: Request, res: Response) => {
+export const login = async (req: Request, res: Response, next: NextFunction) => {
   const { email, password } = req.body;
 
   try {
@@ -18,36 +20,44 @@ export const login = async (req: Request, res: Response) => {
       password,
     });
 
-    if (error) return res.status(401).json({ error: error.message });
+    if (error) return next(new AppError(error.message, 401));
 
     const user = await prisma.user.findUnique({
       where: { email },
+      include: { society: true }
     });
+
+    if (!user) return next(new AppError('User profile not found', 404));
+
+    logger.info(`User logged in: ${email}`);
 
     res.json({
       session: data.session,
       user: user,
     });
-  } catch (err) {
-    res.status(500).json({ error: 'Internal server error' });
+  } catch (err: any) {
+    next(err);
   }
 };
 
-export const getCurrentUser = async (req: AuthRequest, res: Response) => {
-  if (!req.user) return res.status(401).json({ error: 'Not authenticated' });
+export const getCurrentUser = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  if (!req.user) return next(new AppError('Not authenticated', 401));
 
   try {
     const user = await prisma.user.findUnique({
       where: { id: req.user.id },
       include: { society: true }
     });
+    
+    if (!user) return next(new AppError('User not found', 404));
+    
     res.json(user);
-  } catch (err) {
-    res.status(500).json({ error: 'Internal server error' });
+  } catch (err: any) {
+    next(err);
   }
 };
 
-export const register = async (req: AuthRequest, res: Response) => {
+export const register = async (req: AuthRequest, res: Response, next: NextFunction) => {
   const { email, password, name, role, societyId } = req.body;
 
   try {
@@ -59,7 +69,7 @@ export const register = async (req: AuthRequest, res: Response) => {
       user_metadata: { role, societyId, name }
     });
 
-    if (authError) return res.status(400).json({ error: authError.message });
+    if (authError) return next(new AppError(authError.message, 400));
 
     // 2. Create user profile in Prisma
     const newUser = await prisma.user.create({
@@ -72,13 +82,15 @@ export const register = async (req: AuthRequest, res: Response) => {
       },
     });
 
+    logger.info(`New user registered: ${email} with role ${role}`);
+
     res.status(201).json(newUser);
-  } catch (err) {
-    res.status(500).json({ error: 'Internal server error' });
+  } catch (err: any) {
+    next(err);
   }
 };
 
-export const changeRole = async (req: AuthRequest, res: Response) => {
+export const changeRole = async (req: AuthRequest, res: Response, next: NextFunction) => {
   const { userId, newRole, societyId } = req.body;
 
   try {
@@ -87,7 +99,7 @@ export const changeRole = async (req: AuthRequest, res: Response) => {
       user_metadata: { role: newRole, societyId }
     });
 
-    if (authError) return res.status(400).json({ error: authError.message });
+    if (authError) return next(new AppError(authError.message, 400));
 
     // Update Prisma
     const updatedUser = await prisma.user.update({
@@ -98,8 +110,10 @@ export const changeRole = async (req: AuthRequest, res: Response) => {
       },
     });
 
+    logger.info(`User ${userId} role changed to ${newRole}`);
+
     res.json(updatedUser);
-  } catch (err) {
-    res.status(500).json({ error: 'Internal server error' });
+  } catch (err: any) {
+    next(err);
   }
 };
