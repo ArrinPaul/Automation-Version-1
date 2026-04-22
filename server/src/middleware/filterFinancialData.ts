@@ -21,12 +21,7 @@ export const filterFinancialData = (req: AuthRequest, res: Response, next: NextF
 
       // If the data contains transactions, block it completely if not management
       if (data && (data.transactions || (Array.isArray(data) && data.length > 0 && data[0].amount !== undefined))) {
-         if (req.user.role !== Role.MANAGEMENT && req.user.role !== Role.FACULTY_ADVISOR) {
-             // FACULTY_ADVISOR can see their own society total balance but NOT transaction list
-             // Actually, the PRD says Faculty Advisor and Society OB see ONLY total balance.
-             // So if the request is for transactions, block it.
-             return res.status(403).json({ error: 'Forbidden: Financial transaction details restricted to Management' });
-         }
+        return res.status(403).json({ error: 'Forbidden: Financial transaction details restricted to Management' });
       }
     }
     return originalJson.call(this, data);
@@ -36,7 +31,7 @@ export const filterFinancialData = (req: AuthRequest, res: Response, next: NextF
 };
 
 function filterSociety(society: any) {
-  if (society && society.budget !== undefined && society.balance !== undefined) {
+  if (society?.budget !== undefined && society?.balance !== undefined) {
     // If it's a society object, we might want to hide the budget breakdown or transactions
     const { transactions, budget, ...rest } = society;
     return { ...rest, balance: society.balance }; // Only keep balance

@@ -28,7 +28,7 @@ export interface AuthRequest extends Request {
 export const verifyToken = async (req: AuthRequest, _res: Response, next: NextFunction) => {
   const authHeader = req.headers.authorization;
 
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+  if (!authHeader?.startsWith('Bearer ')) {
     return next(new AppError('Missing or invalid authorization header', 401));
   }
 
@@ -64,7 +64,8 @@ export const verifyToken = async (req: AuthRequest, _res: Response, next: NextFu
     };
 
     next();
-  } catch (err: any) {
-    return next(new AppError(err?.message || 'Invalid token', 401));
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Invalid token';
+    return next(new AppError(message, 401));
   }
 };

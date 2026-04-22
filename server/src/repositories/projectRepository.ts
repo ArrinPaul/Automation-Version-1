@@ -18,18 +18,33 @@ export const projectRepository = {
     });
   },
 
+  /**
+   * Create a new project within a Prisma transaction to ensure ACID integrity.
+   */
   async create(data: any) {
-    return prisma.project.create({ data });
-  },
-
-  async update(id: string, data: any) {
-    return prisma.project.update({
-      where: { id },
-      data
+    return prisma.$transaction(async (tx) => {
+      return tx.project.create({ data });
     });
   },
 
+  /**
+   * Update a project within a Prisma transaction to ensure ACID integrity.
+   */
+  async update(id: string, data: any) {
+    return prisma.$transaction(async (tx) => {
+      return tx.project.update({
+        where: { id },
+        data
+      });
+    });
+  },
+
+  /**
+   * Delete a project within a Prisma transaction to ensure ACID integrity.
+   */
   async delete(id: string) {
-    return prisma.project.delete({ where: { id } });
+    return prisma.$transaction(async (tx) => {
+      return tx.project.delete({ where: { id } });
+    });
   }
 };

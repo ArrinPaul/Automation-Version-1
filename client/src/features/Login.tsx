@@ -13,17 +13,25 @@ const loginSchema = z.object({
   password: z.string().min(6),
 });
 
+type LoginFormValues = z.infer<typeof loginSchema>;
+
 const Login: React.FC = () => {
-  const { register, handleSubmit, formState: { errors } } = useForm({
+  const { register, handleSubmit, formState: { errors } } = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
   });
 
-  const onSubmit = async (data: any) => {
-    const { error } = await supabase.auth.signInWithPassword(data);
-    if (error) {
-      toast.error(error.message);
-    } else {
+  const onSubmit = async (data: LoginFormValues) => {
+    try {
+      const { error } = await supabase.auth.signInWithPassword(data);
+
+      if (error) {
+        toast.error(error.message);
+        return;
+      }
+
       toast.success('Access Granted. Establishing connection...');
+    } catch {
+      toast.error('Unable to establish connection. Please try again.');
     }
   };
 
@@ -41,8 +49,9 @@ const Login: React.FC = () => {
           <CardContent>
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
               <div className="space-y-2">
-                <label className="text-[10px] font-mono uppercase text-accent">Email_Address</label>
+                <label htmlFor="email" className="text-[10px] font-mono uppercase text-accent">Email_Address</label>
                 <input
+                  id="email"
                   {...register('email')}
                   className="w-full bg-white/5 border border-white/10 p-3 text-white font-mono text-sm focus:outline-none focus:border-primary transition-colors"
                   placeholder="admin@ieee.org"
@@ -50,8 +59,9 @@ const Login: React.FC = () => {
                 {errors.email && <p className="text-destructive text-[10px] font-mono">{errors.email.message as string}</p>}
               </div>
               <div className="space-y-2">
-                <label className="text-[10px] font-mono uppercase text-accent">Security_Key</label>
+                <label htmlFor="password" className="text-[10px] font-mono uppercase text-accent">Security_Key</label>
                 <input
+                  id="password"
                   {...register('password')}
                   type="password"
                   className="w-full bg-white/5 border border-white/10 p-3 text-white font-mono text-sm focus:outline-none focus:border-primary transition-colors"

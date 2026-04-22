@@ -2,24 +2,38 @@ import React from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useQuery } from '@tanstack/react-query';
 import apiClient from '@/services/apiClient';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { motion } from 'framer-motion';
 import { format } from 'date-fns';
 
+interface Transaction {
+  id: string;
+  date: string;
+  description: string;
+  category: string;
+  type: 'INCOME' | 'EXPENSE';
+  amount: string | number;
+  society?: {
+    shortName?: string;
+  } | null;
+}
+
 const TransactionsPage: React.FC = () => {
   const { profile } = useAuth();
+  const canViewTransactions = profile?.role === 'MANAGEMENT';
 
-  const { data: transactions, isLoading } = useQuery({
+  const { data: transactions, isLoading } = useQuery<Transaction[]>({
     queryKey: ['transactions'],
     queryFn: async () => {
-      const res = await apiClient.get('/transactions');
+      const res = await apiClient.get<Transaction[]>('/transactions');
       return res.data;
-    }
+    },
+    enabled: canViewTransactions,
   });
 
-  if (profile?.role === 'SOCIETY_OB' || profile?.role === 'FACULTY_ADVISOR') {
+  if (!canViewTransactions) {
       return (
           <div className="p-8 technical-grid min-h-screen flex items-center justify-center">
               <Card className="bg-black/40 border-destructive/50 border-l-4 p-8 max-w-md">
@@ -58,7 +72,7 @@ const TransactionsPage: React.FC = () => {
           <TableBody>
             {isLoading ? (
                <TableRow><TableCell colSpan={6} className="text-center font-mono py-8 animate-pulse text-muted-foreground">FETCHING_DATA...</TableCell></TableRow>
-            ) : transactions?.map((tx: any, i: number) => (
+            ) : transactions?.map((tx, i: number) => (
               <motion.tr
                 key={tx.id}
                 initial={{ opacity: 0 }}
@@ -81,7 +95,7 @@ const TransactionsPage: React.FC = () => {
                    </Badge>
                 </TableCell>
                 <TableCell>
-                  <Badge className={tx.type === 'INCOME' ? 'bg-accent text-accent-foreground' : 'bg-destructive text-white'} rounded-none>
+                  <Badge className={`rounded-none ${tx.type === 'INCOME' ? 'bg-accent text-accent-foreground' : 'bg-destructive text-white'}`}>
                     {tx.type}
                   </Badge>
                 </TableCell>
