@@ -27,20 +27,36 @@ export const societyRepository = {
     });
   },
 
+  /**
+   * Create a new society within a Prisma transaction to ensure ACID integrity.
+   */
   async create(data: any) {
-    return prisma.society.create({ data });
-  },
-
-  async update(id: string, data: any) {
-    return prisma.society.update({
-      where: { id },
-      data
+    return prisma.$transaction(async (tx) => {
+      return tx.society.create({ data });
     });
   },
 
+  /**
+   * Update a society within a Prisma transaction to ensure ACID integrity.
+   */
+  async update(id: string, data: any) {
+    return prisma.$transaction(async (tx) => {
+      return tx.society.update({
+        where: { id },
+        data
+      });
+    });
+  },
+
+  /**
+   * Delete a society within a Prisma transaction to ensure ACID integrity.
+   * Cascading deletes are handled by Prisma cascade rules in schema.prisma.
+   */
   async delete(id: string) {
-    return prisma.society.delete({
-      where: { id }
+    return prisma.$transaction(async (tx) => {
+      return tx.society.delete({
+        where: { id }
+      });
     });
   }
 };

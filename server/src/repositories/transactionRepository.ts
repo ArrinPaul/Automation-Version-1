@@ -1,4 +1,5 @@
 import { PrismaClient, TransactionType, TxStatus } from '@prisma/client';
+import { Decimal } from '@prisma/client/runtime/library';
 
 const prisma = new PrismaClient();
 
@@ -18,11 +19,27 @@ export const transactionRepository = {
     });
   },
 
+  /**
+   * Fetches the current balance for a society.
+   * Returns Decimal value representing aggregated balance.
+   */
+  async getBalanceBySociety(societyId: string): Promise<Decimal | null> {
+    const society = await prisma.society.findUnique({
+      where: { id: societyId },
+      select: { balance: true },
+    });
+
+    return society?.balance ?? null;
+  },
+
   async create(data: any) {
     return prisma.$transaction(async (tx) => {
       const transaction = await tx.transaction.create({ data });
 
-      const amount = data.type === TransactionType.INCOME ? data.amount : -data.amount;
+      // Calculate balance change: INCOME adds, EXPENSE subtracts
+      const amount = data.type === TransactionType.INCOME 
+        ? data.amount 
+        : new Decimal(data.amount).negated();
 
       await tx.society.update({
         where: { id: data.societyId },
@@ -43,14 +60,22 @@ export const transactionRepository = {
         data,
       });
 
-      // Recalculate balance if amount or type changed
+      // Recalculate balance only if amount or type changed
       if (data.amount !== undefined || data.type !== undefined) {
-        const oldAmount = oldTx.type === TransactionType.INCOME ? oldTx.amount : -oldTx.amount;
-        const newAmount = (data.type || oldTx.type) === TransactionType.INCOME
-          ? (data.amount || oldTx.amount)
-          : -(data.amount || oldTx.amount);
+        // Calculate old balance impact
+        const oldAmount = oldTx.type === TransactionType.INCOME 
+          ? oldTx.amount 
+          : new Decimal(oldTx.amount).negated();
 
-        const diff = Number(newAmount) - Number(oldAmount);
+        // Calculate new balance impact
+        const newType = data.type || oldTx.type;
+        const newAmountValue = data.amount || oldTx.amount;
+        const newAmount = newType === TransactionType.INCOME 
+          ? new Decimal(newAmountValue) 
+          : new Decimal(newAmountValue).negated();
+
+        // Calculate difference to adjust balance
+        const diff = new Decimal(newAmount).minus(new Decimal(oldAmount));
 
         await tx.society.update({
           where: { id: updatedTx.societyId },
@@ -67,7 +92,10 @@ export const transactionRepository = {
       const oldTx = await tx.transaction.findUnique({ where: { id } });
       if (!oldTx) throw new Error('Transaction not found');
 
-      const amount = oldTx.type === TransactionType.INCOME ? -oldTx.amount : oldTx.amount;
+      // Reverse the balance impact when deleting
+      const amount = oldTx.type === TransactionType.INCOME 
+        ? new Decimal(oldTx.amount).negated() 
+        : oldTx.amount;
 
       await tx.society.update({
         where: { id: oldTx.societyId },

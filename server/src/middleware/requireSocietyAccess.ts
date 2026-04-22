@@ -14,7 +14,12 @@ export const requireSocietyAccess = () => {
       return next();
     }
 
-    const requestedSocietyIdValue = req.params.societyId ?? req.body?.societyId ?? req.query?.societyId;
+    const routeSocietyId = req.params.societyId;
+    const bodySocietyId = req.body?.societyId;
+    const querySocietyId = req.query?.societyId;
+    const societyIdFromSocietyRoute = req.baseUrl.includes('/societies') ? req.params.id : undefined;
+
+    const requestedSocietyIdValue = routeSocietyId ?? bodySocietyId ?? querySocietyId ?? societyIdFromSocietyRoute;
     let requestedSocietyId: string | undefined;
 
     if (Array.isArray(requestedSocietyIdValue)) {
