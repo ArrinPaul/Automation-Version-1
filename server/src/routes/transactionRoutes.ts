@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { verifyToken } from '../middleware/verifyToken';
 import { requireRole } from '../middleware/requireRole';
 import { requireSocietyAccess } from '../middleware/requireSocietyAccess';
+import { filterFinancialData } from '../middleware/filterFinancialData';
 import { restrictTransactions } from '../middleware/restrictTransactions';
 import { Role } from '@prisma/client';
 import {
@@ -16,12 +17,13 @@ import {
 const router = Router();
 
 router.use(verifyToken);
+router.use(filterFinancialData);
 
 // IMPORTANT: GET /balance must be declared BEFORE GET / to avoid being caught by wildcard pattern matching
-// GET /api/transactions/balance - Fetch aggregated balance for a society (all roles)
+// GET /api/transactions/balance - Legacy balance route retained for compatibility
 router.get('/balance', getBalance);
 
-// GET /api/transactions - Fetch all transaction line items (MANAGEMENT & MEMBER only)
+// GET /api/transactions - Fetch all transaction line items (MANAGEMENT only after financial filtering)
 router.get(
   '/',
   restrictTransactions,

@@ -30,6 +30,36 @@ export const getAnnouncementById = async (req: AuthRequest, res: Response, next:
   }
 };
 
+export const getAnnouncementRecipients = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const result = await announcementRepository.findRecipientEmails(req.params.id as string);
+
+    if (!result) {
+      return next(new AppError('Announcement not found', 404));
+    }
+
+    if (
+      req.user?.role !== Role.MANAGEMENT &&
+      result.announcement.societyId &&
+      req.user?.societyId !== result.announcement.societyId
+    ) {
+      return next(new AppError('Forbidden: You do not have access to this announcement audience', 403));
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        announcementId: result.announcement.id,
+        targetAudience: result.announcement.targetAudience,
+        emails: result.emails,
+        count: result.emails.length,
+      },
+    });
+  } catch (err: any) {
+    return next(new AppError(err?.message || 'Failed to resolve announcement recipients', 500));
+  }
+};
+
 export const createAnnouncement = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const payload = {

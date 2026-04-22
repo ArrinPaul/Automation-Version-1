@@ -3,12 +3,12 @@ import { useAuth } from '@/context/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { motion } from 'framer-motion';
-import { TrendingUp, Users, Calendar, Megaphone } from 'lucide-react';
+import { TrendingUp, TrendingDown, Wallet, Gauge } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import apiClient from '@/services/apiClient';
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import { format, parseISO, subMonths, startOfMonth } from 'date-fns';
-import { formatCompactCurrency, formatCurrency, MONTH_WINDOW, normalizeCollection } from './phase4Helpers';
+import { format, subMonths, startOfMonth } from 'date-fns';
+import { formatCompactCurrency, formatCurrency, MONTH_WINDOW, normalizeCollection, normalizeRecord } from './phase4Helpers';
 
 globalThis.ResizeObserver ??= class ResizeObserverShim {
   observe() {
@@ -34,18 +34,10 @@ interface SocietyRecord {
   id: string;
   name: string;
   shortName: string;
+  budget?: string | number;
   balance?: string | number;
   logoUrl?: string | null;
   advisorSigUrl?: string | null;
-}
-
-interface CalendarEventRecord {
-  date: string;
-  status: 'PROPOSED' | 'CONFIRMED' | 'COMPLETED' | 'CANCELLED';
-}
-
-interface AnnouncementRecord {
-  createdAt?: string;
 }
 
 interface AuditApiResponse {
@@ -57,7 +49,12 @@ interface AuditApiResponse {
   audit?: string;
 }
 
-const buildMonthlySeries = (transactions: TransactionRecord[], calendarEvents: CalendarEventRecord[], announcements: AnnouncementRecord[]) => {
+interface SocietyBalanceResponse {
+  societyId: string;
+  balance: string | number;
+}
+
+const buildMonthlySeries = (transactions: TransactionRecord[]) => {
   const months = Array.from({ length: MONTH_WINDOW }, (_, index) => {
     const monthDate = startOfMonth(subMonths(new Date(), MONTH_WINDOW - 1 - index));
     return {
@@ -88,40 +85,6 @@ const buildMonthlySeries = (transactions: TransactionRecord[], calendarEvents: C
     month.flow = month.income - month.expense;
   });
 
-  if (!transactions.length) {
-    calendarEvents.forEach((event) => {
-      const monthKey = format(parseISO(event.date), 'yyyy-MM');
-      const month = monthLookup.get(monthKey);
-      if (!month) return;
-
-      let weight = -1;
-      if (event.status === 'COMPLETED') {
-        weight = 3;
-      } else if (event.status === 'CONFIRMED') {
-        weight = 2;
-      } else if (event.status === 'PROPOSED') {
-        weight = 1;
-      }
-
-      if (weight > 0) {
-        month.income += weight * 2500;
-      } else {
-        month.expense += Math.abs(weight) * 1200;
-      }
-      month.flow = month.income - month.expense;
-    });
-
-    announcements.forEach((announcement) => {
-      if (!announcement.createdAt) return;
-      const monthKey = format(parseISO(announcement.createdAt), 'yyyy-MM');
-      const month = monthLookup.get(monthKey);
-      if (!month) return;
-
-      month.income += 800;
-      month.flow = month.income - month.expense;
-    });
-  }
-
   return months.map((month) => ({
     ...month,
     income: Number(month.income.toFixed(2)),
@@ -141,20 +104,17 @@ const Dashboard: React.FC = () => {
     },
   });
 
-  const announcementsQuery = useQuery<AnnouncementRecord[]>({
-    queryKey: ['dashboard-announcements', profile?.role, profile?.societyId],
+  const societyBalanceQuery = useQuery<SocietyBalanceResponse | null>({
+    queryKey: ['dashboard-society-balance', profile?.societyId],
     queryFn: async () => {
-      const response = await apiClient.get<unknown>('/announcements');
-      return normalizeCollection<AnnouncementRecord>(response.data);
-    },
-  });
+      if (!profile?.societyId || profile.role === 'MEMBER') {
+        return null;
+      }
 
-  const calendarQuery = useQuery<CalendarEventRecord[]>({
-    queryKey: ['dashboard-calendar-events', profile?.role, profile?.societyId],
-    queryFn: async () => {
-      const response = await apiClient.get<unknown>('/calendar-events');
-      return normalizeCollection<CalendarEventRecord>(response.data);
+      const response = await apiClient.get<unknown>(`/societies/${profile.societyId}/balance`);
+      return normalizeRecord<SocietyBalanceResponse>(response.data);
     },
+    enabled: Boolean(profile?.societyId && profile.role !== 'MEMBER' && profile.role !== 'MANAGEMENT'),
   });
 
   const transactionsQuery = useQuery<TransactionRecord[]>({
@@ -167,8 +127,6 @@ const Dashboard: React.FC = () => {
   });
 
   const societyList = societyQuery.data ?? [];
-  const announcementList = announcementsQuery.data ?? [];
-  const calendarEvents = calendarQuery.data ?? [];
   const transactions = transactionsQuery.data ?? [];
 
   const auditQuery = useQuery<{ analysis: string; wordCount: number }>({
@@ -185,36 +143,74 @@ const Dashboard: React.FC = () => {
     staleTime: 1000 * 60 * 5,
   });
 
-  const upcomingEvents = useMemo(() => {
-    const now = new Date();
-    const monthAhead = new Date(now);
-    monthAhead.setDate(now.getDate() + 30);
+  const scopedSociety = useMemo(() => {
+    if (profile?.societyId) {
+      return societyList.find((society) => society.id === profile.societyId) ?? societyList[0] ?? null;
+    }
 
-    return calendarEvents.filter((event) => {
-      const eventDate = parseISO(event.date);
-      return eventDate >= now && eventDate <= monthAhead;
-    }).length;
-  }, [calendarEvents]);
+    return societyList[0] ?? null;
+  }, [profile?.societyId, societyList]);
 
-  const complianceCount = useMemo(() => {
-    return societyList.filter((society) => society.logoUrl && society.advisorSigUrl).length;
-  }, [societyList]);
+  const hasTransactionAccess = profile?.role === 'MANAGEMENT';
+  const hasBalanceAccess = profile?.role === 'MANAGEMENT' || profile?.role === 'FACULTY_ADVISOR' || profile?.role === 'SOCIETY_OB';
 
-  const monthlySeries = useMemo(
-    () => buildMonthlySeries(transactions, calendarEvents, announcementList),
-    [transactions, calendarEvents, announcementList]
-  );
+  const currentBalance = useMemo(() => {
+    if (profile?.role === 'MANAGEMENT') {
+      return societyList.reduce((sum, society) => sum + Number.parseFloat(String(society.balance ?? 0)), 0);
+    }
 
-  const currentBalance = profile?.society?.balance ?? societyList[0]?.balance ?? 0;
-  const activeAnnouncements = announcementList.length;
-  const totalSocieties = societyList.length || (profile?.society ? 1 : 0);
-  const balanceLabel = formatCurrency(currentBalance);
+    if (societyBalanceQuery.data?.balance !== undefined) {
+      return Number.parseFloat(String(societyBalanceQuery.data.balance));
+    }
+
+    return Number.parseFloat(String(profile?.society?.balance ?? scopedSociety?.balance ?? 0));
+  }, [profile?.role, profile?.society?.balance, scopedSociety?.balance, societyBalanceQuery.data, societyList]);
+
+  const currentBudget = useMemo(() => {
+    if (profile?.role === 'MANAGEMENT') {
+      return societyList.reduce((sum, society) => sum + Number.parseFloat(String(society.budget ?? 0)), 0);
+    }
+
+    return Number.parseFloat(String(scopedSociety?.budget ?? 0));
+  }, [profile?.role, scopedSociety?.budget, societyList]);
+
+  const transactionTotals = useMemo(() => {
+    return transactions.reduce(
+      (totals, transaction) => {
+        const amount = Number.parseFloat(String(transaction.amount));
+        if (!Number.isFinite(amount)) {
+          return totals;
+        }
+
+        if (transaction.type === 'INCOME') {
+          totals.income += amount;
+        } else {
+          totals.expense += amount;
+        }
+
+        return totals;
+      },
+      { income: 0, expense: 0 }
+    );
+  }, [transactions]);
+
+  const utilization = useMemo(() => {
+    if (currentBudget <= 0) {
+      return 0;
+    }
+
+    const spentAmount = hasTransactionAccess ? transactionTotals.expense : Math.max(currentBudget - currentBalance, 0);
+    return Number(((spentAmount / currentBudget) * 100).toFixed(1));
+  }, [currentBalance, currentBudget, hasTransactionAccess, transactionTotals.expense]);
+
+  const utilizationTone = utilization > 80 ? 'bg-red-500' : 'bg-[#C1FF00]';
+  const monthlySeries = useMemo(() => buildMonthlySeries(transactions), [transactions]);
 
   const kpis = [
-    { title: 'Available Balance', value: balanceLabel, icon: TrendingUp, accent: 'text-white' },
-    { title: 'Accessible Societies', value: `${totalSocieties}`, icon: Users, accent: 'text-white/80' },
-    { title: 'Upcoming Events', value: `${upcomingEvents}`, icon: Calendar, accent: 'text-white/80' },
-    { title: 'Announcements', value: `${activeAnnouncements}`, icon: Megaphone, accent: 'text-white/80' },
+    { title: 'Total Balance', value: hasBalanceAccess ? formatCurrency(currentBalance) : 'Restricted', icon: Wallet, accent: 'text-white' },
+    { title: 'Income', value: hasTransactionAccess ? formatCurrency(transactionTotals.income) : 'Restricted', icon: TrendingUp, accent: 'text-emerald-300' },
+    { title: 'Expenditure', value: hasTransactionAccess ? formatCurrency(transactionTotals.expense) : 'Restricted', icon: TrendingDown, accent: 'text-red-300' },
+    { title: 'Utilization %', value: hasBalanceAccess ? `${utilization.toFixed(1)}%` : 'Restricted', icon: Gauge, accent: utilization > 80 ? 'text-red-300' : 'text-[#C1FF00]' },
   ];
 
   let auditContent = (
@@ -271,6 +267,11 @@ const Dashboard: React.FC = () => {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-display text-white">{kpi.value}</div>
+                {kpi.title === 'Utilization %' && hasBalanceAccess && (
+                  <div className="mt-4 h-2 w-full overflow-hidden bg-white/10">
+                    <div className={`h-full ${utilizationTone}`} style={{ width: `${Math.min(utilization, 100)}%` }} />
+                  </div>
+                )}
               </CardContent>
             </Card>
           </motion.div>
@@ -295,8 +296,8 @@ const Dashboard: React.FC = () => {
                 <AreaChart data={monthlySeries}>
                   <defs>
                     <linearGradient id="flowFill" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#ffffff" stopOpacity={0.4} />
-                      <stop offset="95%" stopColor="#ffffff" stopOpacity={0.02} />
+                      <stop offset="5%" stopColor="#00629B" stopOpacity={0.45} />
+                      <stop offset="95%" stopColor="#00629B" stopOpacity={0.04} />
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" />
@@ -307,7 +308,7 @@ const Dashboard: React.FC = () => {
                     labelStyle={{ color: '#fff' }}
                     formatter={(value: number) => formatCurrency(value)}
                   />
-                  <Area type="monotone" dataKey="flow" stroke="#ffffff" fill="url(#flowFill)" strokeWidth={2} />
+                  <Area type="monotone" dataKey="flow" stroke="#00629B" fill="url(#flowFill)" strokeWidth={2} />
                 </AreaChart>
               </ResponsiveContainer>
             )}
@@ -321,11 +322,28 @@ const Dashboard: React.FC = () => {
           <CardContent className="space-y-4">
             <div className="p-3 border border-white/5 bg-white/5 font-mono text-[10px] leading-relaxed">
               <p className="text-muted-foreground mb-2">&gt; SYNCHRONIZING DASHBOARD COUNTERS...</p>
-              <p className="text-white">{complianceCount}/{Math.max(totalSocieties, 1)} societies are fully compliant. The activity feed and calendar scope are current, and the monthly flow curve reflects the latest accessible data.</p>
+              <p className="text-white">
+                {hasTransactionAccess
+                  ? 'Management view shows branch-wide inflow, outflow, balance, and utilization based on transaction records.'
+                  : hasBalanceAccess
+                    ? 'Society-scoped roles are limited to balance and utilization summaries while line-item income and expense stay restricted.'
+                    : 'Member access excludes financial line items. Dashboard financial cards remain restricted by design.'}
+              </p>
             </div>
-            <button className="w-full py-2 border border-primary text-primary font-mono text-xs uppercase hover:bg-primary hover:text-white transition-all">
-              Refresh Operational View
-            </button>
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full rounded-none border-white/10 bg-transparent text-[10px] uppercase tracking-[0.25em] text-white hover:bg-white/5"
+              onClick={() => {
+                void Promise.all([
+                  societyQuery.refetch(),
+                  societyBalanceQuery.refetch(),
+                  transactionsQuery.refetch(),
+                ]);
+              }}
+            >
+              Refresh Financial View
+            </Button>
           </CardContent>
         </Card>
       </div>

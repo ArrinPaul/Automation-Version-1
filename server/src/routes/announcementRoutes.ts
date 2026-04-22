@@ -6,6 +6,7 @@ import { requireSocietyAccess } from '../middleware/requireSocietyAccess';
 import {
   getAnnouncements,
   getAnnouncementById,
+  getAnnouncementRecipients,
   createAnnouncement,
   updateAnnouncement,
   deleteAnnouncement
@@ -16,6 +17,7 @@ const router = Router();
 router.use(verifyToken);
 
 router.get('/', getAnnouncements);
+router.get('/:id/recipients', getAnnouncementRecipients);
 router.get('/:id', getAnnouncementById);
 
 router.post(

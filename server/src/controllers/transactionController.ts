@@ -64,10 +64,11 @@ export const getTransactions = async (req: AuthRequest, res: Response, next: Nex
  */
 export const getBalance = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    const { societyId } = req.query;
+    const requestedSocietyId = req.params.id ?? req.query.societyId;
+    const societyId = typeof requestedSocietyId === 'string' ? requestedSocietyId : undefined;
 
-    if (!societyId || typeof societyId !== 'string') {
-      return next(new AppError('Society ID is required as query parameter', 400));
+    if (!societyId) {
+      return next(new AppError('Society ID is required', 400));
     }
 
     if (!req.user?.id) {
