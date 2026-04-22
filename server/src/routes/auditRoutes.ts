@@ -7,6 +7,7 @@ import { getAudit, getAuditLogs } from '../controllers/auditController';
 const router = Router();
 
 router.get('/', verifyToken, getAudit);
+router.get('/financial-insights', verifyToken, getAudit);
 router.get('/logs', verifyToken, requireRole([Role.MANAGEMENT]), getAuditLogs);
 
 export default router;
