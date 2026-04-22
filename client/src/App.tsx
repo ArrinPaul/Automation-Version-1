@@ -16,6 +16,7 @@ import FinancialReportsPage from './features/FinancialReportsPage';
 import QuarterlyStatementPage from './features/QuarterlyStatementPage';
 import Login from './features/Login';
 import Sidebar from './components/layout/Sidebar';
+import ShellHeader from './components/layout/ShellHeader';
 import { Toaster } from 'sonner';
 import './styles/globals.css';
 
@@ -51,11 +52,14 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode; roles?: Role[] }> = 
   }
 
   return (
-    <div className="flex">
+    <div className="flex min-h-screen bg-background text-foreground">
       <Sidebar />
-      <main className="flex-1 overflow-auto">
+      <div className="flex-1 flex flex-col min-w-0">
+        <ShellHeader />
+        <main className="flex-1 overflow-auto">
         {children}
-      </main>
+        </main>
+      </div>
     </div>
   );
 };

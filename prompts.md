@@ -352,10 +352,74 @@ This document contains individual, high-fidelity prompts for executing each phas
 > 4. Add the 'Credential UI Tips' to the user management section, explaining the `{societyid}@ieee.org` email convention."
 
 ### **Phase 3 Checklist:**
-- [ ] `Syncopate` and `JetBrains Mono` fonts active.
-- [ ] Persona Aliases (Dean, Counselor, etc.) functional.
-- [ ] Sidebar links filtered by `profile.role`.
-- [ ] UI hairline borders (0.5px) and dot-grid backgrounds applied.
+- [x] `Syncopate` and `JetBrains Mono` fonts active.
+- [x] Persona Aliases (Dean, Counselor, etc.) functional.
+- [x] Sidebar links filtered by `profile.role`.
+- [x] UI hairline borders (0.5px) and dot-grid backgrounds applied.
+
+---
+
+## 📊 Phase 3: Shell & Persona Alias Implementation Report
+
+### **Implementation Overview**
+
+#### 1. Technical Brutalism Design System
+**Files Updated**:
+- `client/src/styles/globals.css`
+- `client/index.html`
+- `client/src/App.tsx`
+- `client/src/components/layout/ShellHeader.tsx`
+
+**Changes**:
+- Set the application background to Obsidian (`#0A0A0C`) at the global CSS layer.
+- Switched the base body typography to `JetBrains Mono` for data-heavy UI surfaces.
+- Preserved `Syncopate` for display headers via the existing Tailwind font stack.
+- Added a `brutalist-surface` utility for glass-dark panels with thin borders and blur.
+- Removed the extra body font import so the shell now uses only the Phase 3 type system.
+
+#### 2. Persona Aliases
+**Files Added/Updated**:
+- `client/src/lib/persona.ts` (NEW)
+- `client/src/components/layout/ShellHeader.tsx` (NEW)
+- `client/src/components/layout/Sidebar.tsx`
+
+**Rules Implemented**:
+- `MANAGEMENT` users now display a persona alias instead of only the raw profile name.
+- Management emails with a `dean` suffix token resolve to `Dean`.
+- Management emails with a `director` suffix token resolve to `Director`.
+- Management emails with a `counselor`/`counsellor` suffix token resolve to `Branch Counselor`.
+- If no persona suffix token is present, the UI safely falls back to the profile name.
+- The alias is surfaced in both the shell header and the sidebar identity block.
+
+#### 3. Responsive Sidebar & Shell Layout
+**Files Updated**:
+- `client/src/components/layout/Sidebar.tsx`
+- `client/src/App.tsx`
+
+**Changes**:
+- Wrapped protected content in a dedicated shell with a sticky header and persistent sidebar.
+- Preserved role-based nav filtering based on `profile.role`.
+- Tightened the sidebar styling with brutalist spacing, explicit 0.5px hairline borders, monochrome states, and uppercase mono labels.
+- Kept sign-out handling guarded to avoid unhandled promise rejections.
+
+#### 4. Credential UI Tips
+**File Updated**:
+- `client/src/features/UserManagementPage.tsx`
+
+**Changes**:
+- Added a dedicated credential guidance card for management workflows.
+- Documented the `{societyid}@ieee.org` convention for branch-scoped accounts.
+- Included a concrete example to reduce onboarding mistakes.
+
+### **Validation Results**
+- ✅ Client build: `npm run build` (success; 1 non-blocking chunk-size warning)
+- ✅ Client tests: `npm test -- --run` (1/1 passing)
+- ✅ TypeScript: No active errors in the updated Phase 3 files
+
+### **Phase 3 Final Status**
+- ✅ Checklist completed.
+- ✅ Brutalist shell and persona alias behavior implemented in production-ready form.
+- ✅ No blocking regressions detected in build or tests.
 
 ---
 
