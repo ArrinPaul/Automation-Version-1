@@ -11,6 +11,11 @@ export const getAudit = async (req: AuthRequest, res: Response, next: NextFuncti
   try {
     const isGlobal = req.user?.role === Role.MANAGEMENT;
     const societyId = req.user?.societyId;
+
+    if (!isGlobal && !societyId) {
+      return next(new AppError('Forbidden: Society access required for audit generation', 403));
+    }
+
     const where = isGlobal ? {} : { id: societyId! };
 
     const data = await prisma.society.findMany({
