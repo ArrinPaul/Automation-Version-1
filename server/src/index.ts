@@ -18,6 +18,7 @@ import memberRoutes from './routes/memberRoutes';
 import officeBearerRoutes from './routes/officeBearerRoutes';
 import speakerRoutes from './routes/speakerRoutes';
 import calendarEventRoutes from './routes/calendarEventRoutes';
+import reportRoutes from './routes/reportRoutes';
 
 const app = express();
 
@@ -49,6 +50,7 @@ app.use('/api/members', memberRoutes);
 app.use('/api/office-bearers', officeBearerRoutes);
 app.use('/api/speakers', speakerRoutes);
 app.use('/api/calendar-events', calendarEventRoutes);
+app.use('/api/reports', reportRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({ 
