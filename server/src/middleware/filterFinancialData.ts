@@ -30,10 +30,21 @@ export const filterFinancialData = (req: AuthRequest, res: Response, next: NextF
   next();
 };
 
-function filterSociety(society: any) {
-  if (society?.budget !== undefined && society?.balance !== undefined) {
-    const { transactions, budget, ...rest } = society;
-    return { ...rest, balance: society.balance };
+type FinancialRecord = Record<string, unknown> & {
+  budget?: unknown;
+  balance?: unknown;
+  transactions?: unknown;
+};
+
+function filterSociety(society: unknown): unknown {
+  if (typeof society === 'object' && society !== null) {
+    const typedSociety = society as FinancialRecord;
+
+    if (typedSociety.budget !== undefined && typedSociety.balance !== undefined) {
+      const { transactions, budget, ...rest } = typedSociety;
+      return { ...rest, balance: typedSociety.balance };
+    }
   }
+
   return society;
 }

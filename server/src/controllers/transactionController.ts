@@ -2,7 +2,7 @@ import { Response, NextFunction } from 'express';
 import { transactionRepository } from '../repositories/transactionRepository';
 import { AuthRequest } from '../middleware/verifyToken';
 import { z } from 'zod';
-import { Role, TransactionType } from '@prisma/client';
+import { Prisma, Role, TransactionType } from '@prisma/client';
 import { AppError } from '../middleware/errorHandler';
 import { Decimal } from '@prisma/client/runtime/library';
 
@@ -38,7 +38,7 @@ const transactionUpdateSchema = transactionSchema.partial();
 
 export const getTransactions = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    const where: any = {};
+    const where: Prisma.TransactionWhereInput = {};
     if (req.user?.role !== Role.MANAGEMENT && req.user?.societyId) {
       where.societyId = req.user.societyId;
     }

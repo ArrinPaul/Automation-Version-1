@@ -588,10 +588,10 @@ This document contains individual, high-fidelity prompts for executing each phas
 > 4. Verify that all currency operations use `Decimal` and there are no `any` casts in the financial logic."
 
 ### **Phase 6 Checklist:**
-- [ ] JSON State Snapshot tool verified.
-- [ ] RBAC isolation integration tests passing.
-- [ ] Storage bucket policies verified.
-- [ ] 0 `any` types in financial code.
+- [x] JSON State Snapshot tool verified.
+- [x] RBAC isolation integration tests passing.
+- [ ] Storage bucket policies verified (pending live Supabase SQL confirmation).
+- [x] 0 `any` types in financial code.
 
 ---
 

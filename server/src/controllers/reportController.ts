@@ -2,6 +2,7 @@ import { NextFunction, Response } from 'express';
 import { PrismaClient, Role } from '@prisma/client';
 import { AuthRequest } from '../middleware/verifyToken';
 import { AppError } from '../middleware/errorHandler';
+import { generateSystemSnapshot } from '../services/snapshotService';
 
 const prisma = new PrismaClient();
 
@@ -121,6 +122,29 @@ export const downloadFinancialCsv = async (req: AuthRequest, res: Response, next
     return res.status(200).send(csvContent);
   } catch (err: unknown) {
     const errorMessage = err instanceof Error ? err.message : 'Failed to generate financial CSV export';
+    return next(new AppError(errorMessage, 500));
+  }
+};
+
+export const downloadSystemSnapshot = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    if (!req.user?.id) {
+      return next(new AppError('User not authenticated', 401));
+    }
+
+    if (req.user.role !== Role.MANAGEMENT) {
+      return next(new AppError('Forbidden: Snapshot export is restricted to management', 403));
+    }
+
+    const snapshot = await generateSystemSnapshot();
+    const exportTime = snapshot.meta.generatedAt.slice(0, 10);
+    const filename = `ieee-finance-pro-snapshot-${exportTime}.json`;
+
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    return res.status(200).send(JSON.stringify(snapshot, null, 2));
+  } catch (err: unknown) {
+    const errorMessage = err instanceof Error ? err.message : 'Failed to generate snapshot export';
     return next(new AppError(errorMessage, 500));
   }
 };

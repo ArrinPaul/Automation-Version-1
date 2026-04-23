@@ -1,10 +1,31 @@
-import { PrismaClient, TransactionType, TxStatus } from '@prisma/client';
+import { Prisma, PrismaClient, TransactionType, TxStatus } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
 
 const prisma = new PrismaClient();
 
+type TransactionCreatePayload = {
+  amount: Decimal;
+  type: TransactionType;
+  category: string;
+  description: string;
+  date: Date;
+  societyId: string;
+  receiptUrl: string | null;
+  createdById: string;
+};
+
+type TransactionUpdatePayload = Partial<{
+  amount: Decimal;
+  type: TransactionType;
+  category: string;
+  description: string;
+  date: Date;
+  societyId: string;
+  receiptUrl: string | null;
+}>;
+
 export const transactionRepository = {
-  async findAll(where: any) {
+  async findAll(where: Prisma.TransactionWhereInput = {}) {
     return prisma.transaction.findMany({
       where,
       include: { society: true, createdBy: true },
@@ -32,7 +53,7 @@ export const transactionRepository = {
     return society?.balance ?? null;
   },
 
-  async create(data: any) {
+  async create(data: TransactionCreatePayload) {
     return prisma.$transaction(async (tx) => {
       const transaction = await tx.transaction.create({ data });
 
@@ -50,7 +71,7 @@ export const transactionRepository = {
     });
   },
 
-  async update(id: string, data: any) {
+  async update(id: string, data: TransactionUpdatePayload) {
     return prisma.$transaction(async (tx) => {
       const oldTx = await tx.transaction.findUnique({ where: { id } });
       if (!oldTx) throw new Error('Transaction not found');
@@ -68,8 +89,8 @@ export const transactionRepository = {
           : new Decimal(oldTx.amount).negated();
 
         // Calculate new balance impact
-        const newType = data.type || oldTx.type;
-        const newAmountValue = data.amount || oldTx.amount;
+        const newType = data.type ?? oldTx.type;
+        const newAmountValue = data.amount ?? oldTx.amount;
         const newAmount = newType === TransactionType.INCOME 
           ? new Decimal(newAmountValue) 
           : new Decimal(newAmountValue).negated();
