@@ -5,6 +5,7 @@ import { Role, SocietyType } from '@prisma/client';
 import { AppError } from '../middleware/errorHandler';
 import { z } from 'zod';
 import { Decimal } from '@prisma/client/runtime/library';
+import { transactionRepository } from '../repositories/transactionRepository';
 
 /**
  * Validates amount as a positive decimal.
@@ -117,6 +118,41 @@ export const updateSociety = async (req: AuthRequest, res: Response, next: NextF
       return next(new AppError(JSON.stringify(formattedErrors), 400));
     }
     const errorMessage = err instanceof Error ? err.message : 'Failed to update society';
+    return next(new AppError(errorMessage, 500));
+  }
+};
+
+export const getSocietyBalance = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  const id = (req.params.societyId ?? req.params.id) as string;
+
+  if (!id) {
+    return next(new AppError('Society ID is required', 400));
+  }
+
+  if (!req.user?.id) {
+    return next(new AppError('User not authenticated', 401));
+  }
+
+  if (req.user.role === Role.MEMBER) {
+    return next(new AppError('Members are not permitted to access financial data routes.', 403));
+  }
+
+  if (req.user.role !== Role.MANAGEMENT && req.user.societyId !== id) {
+    return next(new AppError('You do not have access to view this society balance', 403));
+  }
+
+  try {
+    const balance = await transactionRepository.getBalanceBySociety(id);
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        societyId: id,
+        balance: balance || new Decimal('0.00'),
+      },
+    });
+  } catch (err) {
+    const errorMessage = err instanceof Error ? err.message : 'Failed to fetch society balance';
     return next(new AppError(errorMessage, 500));
   }
 };

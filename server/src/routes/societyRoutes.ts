@@ -4,7 +4,7 @@ import { requireRole } from '../middleware/requireRole';
 import { requireSocietyAccess } from '../middleware/requireSocietyAccess';
 import { filterFinancialData } from '../middleware/filterFinancialData';
 import { Role } from '@prisma/client';
-import { getSocieties, createSociety, getSocietyById, updateSociety } from '../controllers/societyController';
+import { getSocieties, createSociety, getSocietyById, getSocietyBalance, updateSociety } from '../controllers/societyController';
 
 const router = Router();
 
@@ -17,6 +17,14 @@ router.post(
   verifyToken,
   requireRole([Role.MANAGEMENT]),
   createSociety
+);
+
+// GET /api/societies/:id - Fetch society by ID (with financial data filtering)
+router.get(
+  '/:id/balance',
+  verifyToken,
+  requireSocietyAccess(),
+  getSocietyBalance
 );
 
 // GET /api/societies/:id - Fetch society by ID (with financial data filtering)
