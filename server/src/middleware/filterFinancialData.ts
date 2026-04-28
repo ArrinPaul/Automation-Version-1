@@ -17,8 +17,19 @@ export const filterFinancialData = (req: AuthRequest, res: Response, next: NextF
 
   res.json = function (data) {
     if (req.user && req.user.role !== Role.MANAGEMENT) {
+      // Handle standard API response wrappers (e.g., { success: true, data: [...] })
+      if (data && typeof data === 'object' && 'success' in data && 'data' in data) {
+        const payload = (data as any).data;
+        const filteredPayload = Array.isArray(payload)
+          ? payload.map((item) => filterSociety(item))
+          : filterSociety(payload);
+
+        return originalJson.call(this, { ...data, data: filteredPayload });
+      }
+
+      // Handle raw arrays or objects
       const filteredData = Array.isArray(data)
-        ? data.map(item => filterSociety(item))
+        ? data.map((item) => filterSociety(item))
         : filterSociety(data);
 
       return originalJson.call(this, filteredData);
@@ -40,10 +51,11 @@ function filterSociety(society: unknown): unknown {
   if (typeof society === 'object' && society !== null) {
     const typedSociety = society as FinancialRecord;
 
-    if (typedSociety.budget !== undefined && typedSociety.balance !== undefined) {
-      const { transactions, budget, ...rest } = typedSociety;
-      return { ...rest, balance: typedSociety.balance };
-    }
+    // Create a copy to avoid mutating the original object
+    const { transactions, budget, ...rest } = typedSociety;
+
+    // Return the rest of the object. Balance is retained if it exists in 'rest'
+    return rest;
   }
 
   return society;
