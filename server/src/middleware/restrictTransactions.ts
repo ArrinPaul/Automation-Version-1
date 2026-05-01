@@ -15,10 +15,7 @@ export const restrictTransactions = (req: AuthRequest, res: Response, next: Next
     return next(new AppError('User not authenticated', 401));
   }
 
-  // Roles that are blocked from viewing transaction line-items
-  const restrictedRoles: Role[] = [Role.FACULTY_ADVISOR, Role.SOCIETY_OB];
-
-  if (restrictedRoles.includes(req.user.role)) {
+  if (req.user.role !== Role.MANAGEMENT) {
     return next(
       new AppError(
         'Financial transaction details are restricted to Management users. Use /api/transactions/balance to view aggregated balance.',

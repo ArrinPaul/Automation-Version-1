@@ -3,6 +3,10 @@ import { PrismaClient, Role } from '@prisma/client';
 const prisma = new PrismaClient();
 
 export const userRepository = {
+  async findAll() {
+    return prisma.user.findMany();
+  },
+
   async findByIdWithSociety(id: string) {
     return prisma.user.findUnique({
       where: { id },
