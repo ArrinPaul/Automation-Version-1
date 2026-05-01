@@ -351,9 +351,13 @@ export const setupFirstAdmin = async (req: Request, res: Response, next: NextFun
       status: 'success',
     }, 'First admin user created successfully');
 
-    // Return the session so the frontend can immediately log in
-    const { data: authSession, error: sessionError } = await supabase.auth.admin.createSession(authData.user.id);
-    
+    // Return a session so the frontend can immediately continue as the new admin.
+    // Use password sign-in to create a real user session after successful bootstrap.
+    const { data: authSession, error: sessionError } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
     if (sessionError) {
       console.log('[SETUP_DEBUG] Session creation failed:', sessionError);
       logger.warn({ userId: newUser.id, error: sessionError }, 'Failed to create session after setup');
