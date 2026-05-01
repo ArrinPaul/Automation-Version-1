@@ -7,10 +7,11 @@ import { AppError } from '../middleware/errorHandler';
 import logger from '../config/logger';
 import { userRepository } from '../repositories/userRepository';
 import { auditLogRepository } from '../repositories/auditLogRepository';
+import { env } from '../config/env';
 
 const supabase = createClient(
-  process.env.SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
+  env.SUPABASE_URL,
+  env.SUPABASE_SERVICE_ROLE_KEY
 );
 
 const writeAuditLog = async (
@@ -39,6 +40,13 @@ const registerSchema = z.object({
   name: z.string().min(2),
   role: roleSchema,
   societyId: z.string().uuid().nullable().optional(),
+});
+
+const setupFirstAdminSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(6),
+  name: z.string().min(2),
+  setupKey: z.string().min(1),
 });
 
 const changeRoleSchema = z.object({
@@ -233,5 +241,140 @@ export const changeRole = async (req: AuthRequest, res: Response, next: NextFunc
   } catch (err: unknown) {
     logger.warn({ actorId: req.user?.id, error: err, targetUserId: userId }, 'Failed to change user role');
     next(toAppError(err, 'Failed to change user role'));
+  }
+};
+
+export const checkInitialized = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    console.log('[CHECK_INITIALIZED] Starting check...');
+    const existingUsers = await userRepository.findAll();
+    const isInitialized = existingUsers && existingUsers.length > 0;
+
+    console.log('[CHECK_INITIALIZED] Users found:', existingUsers?.length || 0);
+    console.log('[CHECK_INITIALIZED] System initialized:', isInitialized);
+
+    res.json({
+      initialized: isInitialized,
+      userCount: existingUsers?.length || 0,
+    });
+  } catch (err: unknown) {
+    console.error('[CHECK_INITIALIZED] Error caught:', err);
+    if (err instanceof Error) {
+      console.error('[CHECK_INITIALIZED] Error message:', err.message);
+      console.error('[CHECK_INITIALIZED] Error stack:', err.stack);
+    }
+    logger.warn({ error: err }, 'Failed to check initialization status');
+    // Return 200 with uninitialized state if database has issues
+    return res.status(200).json({
+      initialized: false,
+      userCount: 0,
+      dbError: true,
+    });
+  }
+};
+
+export const setupFirstAdmin = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    console.log('\n[SETUP_DEBUG] Incoming request body:', JSON.stringify(req.body, null, 2));
+    
+    const parseResult = setupFirstAdminSchema.safeParse(req.body);
+
+    if (!parseResult.success) {
+      console.log('[SETUP_DEBUG] Validation failed:', parseResult.error.format());
+      logger.warn({ error: parseResult.error }, 'Invalid setup payload');
+      return next(new AppError('Invalid setup payload', 400));
+    }
+
+    const { email, password, name, setupKey } = parseResult.data;
+    console.log('[SETUP_DEBUG] Parsed setup request:', { email, name, setupKeyLength: setupKey.length });
+
+    // Check if any users already exist
+    const existingUsers = await userRepository.findAll();
+    console.log('[SETUP_DEBUG] Existing users count:', existingUsers?.length || 0);
+    
+    if (existingUsers && existingUsers.length > 0) {
+      console.log('[SETUP_DEBUG] Users already exist, rejecting setup');
+      logger.warn({ email, action: 'setupFirstAdmin', status: 'users_already_exist' }, 'Setup attempted but users already exist');
+      return next(new AppError('System is already initialized. Use login instead.', 403));
+    }
+
+    // Validate setup key
+    const expectedSetupKey = env.SETUP_KEY;
+    console.log('[SETUP_DEBUG] Key validation:');
+    console.log('  Received key:', setupKey);
+    console.log('  Expected key:', expectedSetupKey);
+    console.log('  Keys match:', setupKey === expectedSetupKey);
+    console.log('  Expected key exists:', !!expectedSetupKey);
+    
+    if (!expectedSetupKey || setupKey !== expectedSetupKey) {
+      console.log('[SETUP_DEBUG] Key validation FAILED');
+      logger.warn(
+        { email, action: 'setupFirstAdmin', keyProvided: !!setupKey, keyExpected: !!expectedSetupKey, keysMatch: setupKey === expectedSetupKey },
+        'Invalid setup key provided'
+      );
+      return next(new AppError('Invalid setup key. First-time setup cannot proceed.', 401));
+    }
+
+    console.log('[SETUP_DEBUG] Key validation PASSED, creating user...');
+
+    // Create user in Supabase Auth
+    const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+      email,
+      password,
+      email_confirm: true,
+      user_metadata: { role: 'MANAGEMENT', societyId: null, name }
+    });
+
+    if (authError) {
+      console.log('[SETUP_DEBUG] Supabase user creation failed:', authError);
+      logger.warn({ email, error: authError, action: 'setupFirstAdmin' }, 'Supabase user creation failed');
+      return next(new AppError(`Failed to create admin: ${authError.message}`, 400));
+    }
+
+    console.log('[SETUP_DEBUG] Supabase user created:', authData.user.id);
+
+    // Create user profile in Prisma
+    const newUser = await userRepository.createWithExternalId({
+      id: authData.user.id,
+      email,
+      name,
+      role: 'MANAGEMENT' as Role,
+      societyId: null,
+    });
+
+    console.log('[SETUP_DEBUG] User profile created in database:', newUser.id);
+
+    logger.info({
+      userId: newUser.id,
+      email,
+      action: 'setupFirstAdmin',
+      status: 'success',
+    }, 'First admin user created successfully');
+
+    // Return the session so the frontend can immediately log in
+    const { data: authSession, error: sessionError } = await supabase.auth.admin.createSession(authData.user.id);
+    
+    if (sessionError) {
+      console.log('[SETUP_DEBUG] Session creation failed:', sessionError);
+      logger.warn({ userId: newUser.id, error: sessionError }, 'Failed to create session after setup');
+      return next(new AppError('Setup succeeded but session creation failed', 500));
+    }
+
+    if (!authSession.session) {
+      console.log('[SETUP_DEBUG] No session returned from Supabase');
+      return next(new AppError('Setup succeeded but no session returned', 500));
+    }
+
+    console.log('[SETUP_DEBUG] Setup completed successfully, returning session');
+
+    res.status(201).json({
+      message: 'First admin user created successfully',
+      user: newUser,
+      session: authSession.session,
+    });
+  } catch (err: unknown) {
+    console.log('[SETUP_DEBUG] Unexpected error:', err);
+    logger.warn({ error: err, action: 'setupFirstAdmin' }, 'Unexpected error during first admin setup');
+    next(toAppError(err, 'First admin setup failed'));
   }
 };

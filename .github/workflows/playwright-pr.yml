@@ -1,0 +1,79 @@
+name: Playwright PR Checks
+
+on:
+  pull_request:
+
+jobs:
+  playwright:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install server dependencies
+        working-directory: server
+        run: npm ci
+
+      - name: Install client dependencies
+        working-directory: client
+        run: npm ci
+
+      - name: Install Playwright browsers
+        working-directory: client
+        run: npx playwright install --with-deps chromium
+
+      - name: Start server
+        working-directory: server
+        env:
+          NODE_ENV: test
+          E2E_TEST_MODE: 'true'
+          PORT: '5000'
+          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/ieee_test
+          SUPABASE_URL: http://localhost:54321
+          SUPABASE_SERVICE_ROLE_KEY: test-service-role-key
+          FRONTEND_URL: http://127.0.0.1:5173
+        run: |
+          npm run dev > ../server-e2e.log 2>&1 &
+          echo $! > ../server-e2e.pid
+
+      - name: Start client
+        working-directory: client
+        env:
+          VITE_API_BASE_URL: http://127.0.0.1:5000/api
+          VITE_SUPABASE_URL: http://localhost:54321
+          VITE_SUPABASE_ANON_KEY: test-anon-key
+        run: |
+          npm run dev -- --host 127.0.0.1 --port 5173 > ../client-e2e.log 2>&1 &
+          echo $! > ../client-e2e.pid
+
+      - name: Wait for services
+        run: |
+          for i in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:5000/api/health >/dev/null && curl -fsS http://127.0.0.1:5173 >/dev/null; then
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Server log:" && cat server-e2e.log || true
+          echo "Client log:" && cat client-e2e.log || true
+          exit 1
+
+      - name: Run Playwright tests
+        working-directory: client
+        run: npm run test:e2e -- --project chromium
+
+      - name: Upload logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-pr-logs
+          path: |
+            server-e2e.log
+            client-e2e.log

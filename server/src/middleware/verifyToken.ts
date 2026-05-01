@@ -1,14 +1,12 @@
 import { Request, Response, NextFunction } from 'express';
 import { createClient } from '@supabase/supabase-js';
 import { PrismaClient, Role } from '@prisma/client';
-import dotenv from 'dotenv';
 import { AppError } from './errorHandler';
-
-dotenv.config();
+import { env } from '../config/env';
 
 const supabase = createClient(
-  process.env.SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
+  env.SUPABASE_URL,
+  env.SUPABASE_SERVICE_ROLE_KEY
 );
 const prisma = new PrismaClient();
 
@@ -25,7 +23,31 @@ export interface AuthRequest extends Request {
   };
 }
 
+const applyE2ETestUser = (req: AuthRequest) => {
+  if (process.env.NODE_ENV === 'production' && process.env.E2E_TEST_MODE !== 'true') {
+    return false;
+  }
+
+  const testRole = req.headers['x-e2e-user-role'];
+  if (typeof testRole !== 'string' || !isRole(testRole)) {
+    return false;
+  }
+
+  req.user = {
+    id: typeof req.headers['x-e2e-user-id'] === 'string' ? req.headers['x-e2e-user-id'] : 'e2e-user-id',
+    email: typeof req.headers['x-e2e-user-email'] === 'string' ? req.headers['x-e2e-user-email'] : 'e2e-user@ieee.test',
+    role: testRole,
+    societyId: typeof req.headers['x-e2e-society-id'] === 'string' ? req.headers['x-e2e-society-id'] : null,
+  };
+
+  return true;
+};
+
 export const verifyToken = async (req: AuthRequest, _res: Response, next: NextFunction) => {
+  if (applyE2ETestUser(req)) {
+      return next();
+  }
+
   const authHeader = req.headers.authorization;
 
   if (!authHeader?.startsWith('Bearer ')) {

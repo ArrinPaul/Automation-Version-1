@@ -25,12 +25,22 @@ interface AuthContextType {
   signOut: () => Promise<void>;
 }
 
+type E2EAuthState = {
+  user: User | null;
+  profile: UserProfile | null;
+};
+
+const getE2EAuthState = () => {
+  return (globalThis as typeof globalThis & { __E2E_AUTH_STATE__?: E2EAuthState }).__E2E_AUTH_STATE__ ?? null;
+};
+
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const useSupabaseAuth = () => {
-  const [user, setUser] = useState<User | null>(null);
-  const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [loading, setLoading] = useState(true);
+  const initialE2E = getE2EAuthState();
+  const [user, setUser] = useState<User | null>(initialE2E?.user ?? null);
+  const [profile, setProfile] = useState<UserProfile | null>(initialE2E?.profile ?? null);
+  const [loading, setLoading] = useState<boolean>(!initialE2E);
   const isMounted = useRef(true);
 
   const fetchProfile = useCallback(async () => {
@@ -55,12 +65,32 @@ const useSupabaseAuth = () => {
   useEffect(() => {
     isMounted.current = true;
 
+    const e2eAuthState = getE2EAuthState();
+    if (e2eAuthState) {
+      if (isMounted.current) {
+        setUser(e2eAuthState.user);
+        setProfile(e2eAuthState.profile);
+        setLoading(false);
+      }
+
+      return () => {
+        isMounted.current = false;
+      };
+    }
+
     const initializeAuth = async () => {
       if (isMounted.current) {
         setLoading(true);
       }
 
       try {
+        try {
+          const healthResponse = await apiClient.get('/health');
+          console.info('Backend health check OK', healthResponse.data);
+        } catch (healthError) {
+          console.error('Backend health check failed', healthError);
+        }
+
         const {
           data: { session },
         } = await supabase.auth.getSession();

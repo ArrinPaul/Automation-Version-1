@@ -1,8 +1,23 @@
 import { z } from 'zod';
 import dotenv from 'dotenv';
+import path from 'node:path';
 import logger from './logger';
 
-dotenv.config();
+const dotenvPaths = [
+  path.resolve(process.cwd(), '.env'),
+  path.resolve(process.cwd(), 'server/.env'),
+];
+
+for (const dotenvPath of dotenvPaths) {
+  console.log('[ENV] Attempting to load:', dotenvPath);
+  const result = dotenv.config({ path: dotenvPath });
+  if (result.error === undefined) {
+    console.log('[ENV] Successfully loaded:', dotenvPath);
+    break;
+  } else {
+    console.log('[ENV] File not found or error:', dotenvPath, '-', result.error.message);
+  }
+}
 
 const isTestMode = process.env.NODE_ENV === 'test';
 
@@ -18,6 +33,12 @@ const runtimeEnv = isTestMode
     }
   : process.env;
 
+console.log('[ENV] SETUP_KEY configured:', !!process.env.SETUP_KEY);
+if (process.env.SETUP_KEY) {
+  console.log('[ENV] SETUP_KEY length:', process.env.SETUP_KEY.length);
+  console.log('[ENV] SETUP_KEY first 10 chars:', process.env.SETUP_KEY.substring(0, 10) + '...');
+}
+
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   PORT: z.string().default('5000'),
@@ -25,6 +46,7 @@ const envSchema = z.object({
   SUPABASE_URL: z.string().url(),
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
   FRONTEND_URL: z.string().url().default('http://localhost:5173'),
+  SETUP_KEY: z.string().min(1).optional(),
   GEMINI_API_KEY: z.string().min(1).optional(),
 });
 
