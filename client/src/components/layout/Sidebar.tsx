@@ -1,8 +1,9 @@
+import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { cn } from '@/lib/utils';
 import { getPersonaAlias } from '@/lib/persona';
-import { LayoutDashboard, ReceiptText, Users, Calendar, Award, Megaphone, Settings, LogOut, FileText, Printer } from 'lucide-react';
+import { LayoutDashboard, ReceiptText, Users, Calendar, CalendarDays, Award, Megaphone, Settings, LogOut, FileText, Printer, MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 
@@ -23,11 +24,11 @@ const Sidebar: React.FC = () => {
     { label: 'Dashboard', path: '/', icon: LayoutDashboard, roles: ['MANAGEMENT', 'FACULTY_ADVISOR', 'SOCIETY_OB', 'MEMBER'] },
     { label: 'Transactions', path: '/transactions', icon: ReceiptText, roles: ['MANAGEMENT'] },
     { label: 'Societies', path: '/societies', icon: Users, roles: ['MANAGEMENT', 'FACULTY_ADVISOR', 'SOCIETY_OB'] },
-    { label: 'Events', path: '/events', icon: Calendar, roles: ['MANAGEMENT', 'FACULTY_ADVISOR', 'SOCIETY_OB', 'MEMBER'] },
+    { label: 'Events', path: '/events', icon: CalendarDays, roles: ['MANAGEMENT', 'FACULTY_ADVISOR', 'SOCIETY_OB', 'MEMBER'] },
     { label: 'Calendar', path: '/calendar', icon: Calendar, roles: ['MANAGEMENT', 'FACULTY_ADVISOR', 'SOCIETY_OB', 'MEMBER'] },
     { label: 'Projects', path: '/projects', icon: Award, roles: ['MANAGEMENT', 'FACULTY_ADVISOR', 'SOCIETY_OB'] },
     { label: 'Announcements', path: '/announcements', icon: Megaphone, roles: ['MANAGEMENT', 'FACULTY_ADVISOR', 'SOCIETY_OB', 'MEMBER'] },
-    { label: 'Communications', path: '/communications', icon: Megaphone, roles: ['MANAGEMENT', 'FACULTY_ADVISOR', 'SOCIETY_OB', 'MEMBER'] },
+    { label: 'Communications', path: '/communications', icon: MessageSquare, roles: ['MANAGEMENT', 'FACULTY_ADVISOR', 'SOCIETY_OB', 'MEMBER'] },
     { label: 'User Admin', path: '/admin/users', icon: Settings, roles: ['MANAGEMENT'] },
     { label: 'Registry', path: '/admin/registry', icon: Users, roles: ['MANAGEMENT'] },
     { label: 'Financial Reports', path: '/reports/financial', icon: FileText, roles: ['MANAGEMENT'] },

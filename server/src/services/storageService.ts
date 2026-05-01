@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import dotenv from 'dotenv';
 
 dotenv.config();

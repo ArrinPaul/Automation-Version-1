@@ -72,6 +72,12 @@ const TransactionsPage: React.FC = () => {
           <TableBody>
             {isLoading ? (
                <TableRow><TableCell colSpan={6} className="text-center font-mono py-8 animate-pulse text-muted-foreground">FETCHING_DATA...</TableCell></TableRow>
+            ) : !transactions || transactions.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={6} className="text-center font-mono py-12 text-muted-foreground">
+                  No transactions found. Add income or expense records to see them here.
+                </TableCell>
+              </TableRow>
             ) : transactions?.map((tx, i: number) => (
               <motion.tr
                 key={tx.id}
