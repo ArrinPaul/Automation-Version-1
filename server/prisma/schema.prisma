@@ -27,10 +27,12 @@ model User {
 }
 
 enum Role {
-  MANAGEMENT
-  FACULTY_ADVISOR
-  SOCIETY_OB
-  MEMBER
+  SB_FACULTY      // Student Branch Faculty Advisor — super admin + user management
+  SB_OB           // Student Branch Office Bearer — super admin, no user management
+  SOCIETY_FACULTY // Per-society faculty — can approve transactions, edit society
+  SOCIETY_CHAIR   // Per-society chairperson — can create transactions, manage society ops
+  SOCIETY_OB      // Per-society OB (Vice-chair, Secretary, Webmaster, Treasurer) — events/projects only
+  MEMBER          // View only
 }
 
 model Society {

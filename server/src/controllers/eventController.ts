@@ -1,9 +1,10 @@
 import { Response, NextFunction } from 'express';
 import { eventRepository } from '../repositories/eventRepository';
-import { AuthRequest } from '../middleware/verifyToken';
-import { Role } from '@prisma/client';
+import { AuthRequest, SUPER_ADMIN_ROLES } from '../middleware/verifyToken';
 import { AppError } from '../middleware/errorHandler';
 import { z } from 'zod';
+
+const isSuperAdmin = (req: AuthRequest) => SUPER_ADMIN_ROLES.includes(req.user!.role);
 
 /**
  * Validates dates as ISO 8601 strings, converting to Date objects.
@@ -46,7 +47,7 @@ const eventUpdateSchema = eventSchema.partial();
 export const getEvents = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const where: any = {};
-    if (req.user?.role !== Role.MANAGEMENT && req.user?.societyId) {
+    if (!isSuperAdmin(req) && req.user?.societyId) {
       where.societyId = req.user.societyId;
     }
     const events = await eventRepository.findAll(where);
@@ -97,7 +98,7 @@ export const updateEvent = async (req: AuthRequest, res: Response, next: NextFun
       return next(new AppError('User not authenticated', 401));
     }
 
-    if (req.user.role !== Role.MANAGEMENT) {
+    if (!isSuperAdmin(req)) {
       const existingEvent = await eventRepository.findById(id);
       if (!existingEvent) {
         return next(new AppError('Event not found', 404));
@@ -143,7 +144,7 @@ export const deleteEvent = async (req: AuthRequest, res: Response, next: NextFun
       return next(new AppError('User not authenticated', 401));
     }
 
-    if (req.user.role !== Role.MANAGEMENT) {
+    if (!isSuperAdmin(req)) {
       const existingEvent = await eventRepository.findById(id);
       if (!existingEvent) {
         return next(new AppError('Event not found', 404));

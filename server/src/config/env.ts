@@ -33,11 +33,6 @@ const runtimeEnv = isTestMode
     }
   : process.env;
 
-console.log('[ENV] SETUP_KEY configured:', !!process.env.SETUP_KEY);
-if (process.env.SETUP_KEY) {
-  console.log('[ENV] SETUP_KEY length:', process.env.SETUP_KEY.length);
-  console.log('[ENV] SETUP_KEY first 10 chars:', process.env.SETUP_KEY.substring(0, 10) + '...');
-}
 
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),

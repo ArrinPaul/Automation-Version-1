@@ -1,15 +1,14 @@
 import { Response, NextFunction } from 'express';
-import { Role } from '@prisma/client';
-import { AuthRequest } from '../middleware/verifyToken';
+import { AuthRequest, SUPER_ADMIN_ROLES } from '../middleware/verifyToken';
 import { AppError } from '../middleware/errorHandler';
 import { memberRepository } from '../repositories/memberRepository';
+
+const isSuperAdmin = (req: AuthRequest) => SUPER_ADMIN_ROLES.includes(req.user!.role);
 
 export const getMembers = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const where: any = {};
-    if (req.user?.role !== Role.MANAGEMENT && req.user?.societyId) {
-      where.societyId = req.user.societyId;
-    }
+    if (!isSuperAdmin(req) && req.user?.societyId) where.societyId = req.user.societyId;
 
     const members = await memberRepository.findAll(where);
     return res.json(members);

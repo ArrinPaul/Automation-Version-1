@@ -1,27 +1,19 @@
 import { Response, NextFunction } from 'express';
-import { AuthRequest } from './verifyToken';
-import { Role } from '@prisma/client';
+import { AuthRequest, SUPER_ADMIN_ROLES, TRANSACTION_CREATE_ROLES } from './verifyToken';
 import { AppError } from './errorHandler';
 
 /**
- * Middleware to restrict access to individual transaction line-items for non-management roles.
- *
- * - FACULTY_ADVISOR and SOCIETY_OB are blocked from viewing transaction details (403 Forbidden).
- * - These roles can only use the getBalance endpoint to view aggregated balance.
- * - MANAGEMENT and MEMBER roles are allowed through.
+ * Restricts transaction line-item access to super admins only.
+ * SOCIETY_FACULTY and below cannot see individual transaction records — only balance.
  */
 export const restrictTransactions = (req: AuthRequest, res: Response, next: NextFunction) => {
-  if (!req.user) {
-    return next(new AppError('User not authenticated', 401));
-  }
+  if (!req.user) return next(new AppError('User not authenticated', 401));
 
-  if (req.user.role !== Role.MANAGEMENT) {
-    return next(
-      new AppError(
-        'Financial transaction details are restricted to Management users. Use /api/transactions/balance to view aggregated balance.',
-        403
-      )
-    );
+  if (!SUPER_ADMIN_ROLES.includes(req.user.role)) {
+    return next(new AppError(
+      'Financial transaction details are restricted to SB_FACULTY and SB_OB. Use /api/transactions/balance to view aggregated balance.',
+      403
+    ));
   }
 
   next();

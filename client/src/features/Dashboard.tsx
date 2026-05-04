@@ -114,7 +114,7 @@ const Dashboard: React.FC = () => {
       const response = await apiClient.get<unknown>(`/societies/${profile.societyId}/balance`);
       return normalizeRecord<SocietyBalanceResponse>(response.data);
     },
-    enabled: Boolean(profile?.societyId && profile.role !== 'MEMBER' && profile.role !== 'MANAGEMENT'),
+    enabled: Boolean(profile?.societyId && profile.role !== 'MEMBER' && profile.role !== 'SB_FACULTY' && profile.role !== 'SB_OB'),
   });
 
   const transactionsQuery = useQuery<TransactionRecord[]>({
@@ -123,7 +123,7 @@ const Dashboard: React.FC = () => {
       const response = await apiClient.get<unknown>('/transactions');
       return normalizeCollection<TransactionRecord>(response.data);
     },
-    enabled: profile?.role === 'MANAGEMENT',
+    enabled: profile?.role === 'SB_FACULTY' || profile?.role === 'SB_OB',
   });
 
   const societyList = societyQuery.data ?? [];
@@ -151,11 +151,11 @@ const Dashboard: React.FC = () => {
     return societyList[0] ?? null;
   }, [profile?.societyId, societyList]);
 
-  const hasTransactionAccess = profile?.role === 'MANAGEMENT';
-  const hasBalanceAccess = profile?.role === 'MANAGEMENT' || profile?.role === 'FACULTY_ADVISOR' || profile?.role === 'SOCIETY_OB';
+  const hasTransactionAccess = profile?.role === 'SB_FACULTY' || profile?.role === 'SB_OB';
+  const hasBalanceAccess = profile?.role !== 'MEMBER';
 
   const currentBalance = useMemo(() => {
-    if (profile?.role === 'MANAGEMENT') {
+    if (profile?.role === 'SB_FACULTY' || profile?.role === 'SB_OB') {
       return societyList.reduce((sum, society) => sum + Number.parseFloat(String(society.balance ?? 0)), 0);
     }
 
@@ -167,7 +167,7 @@ const Dashboard: React.FC = () => {
   }, [profile?.role, profile?.society?.balance, scopedSociety?.balance, societyBalanceQuery.data, societyList]);
 
   const currentBudget = useMemo(() => {
-    if (profile?.role === 'MANAGEMENT') {
+    if (profile?.role === 'SB_FACULTY' || profile?.role === 'SB_OB') {
       return societyList.reduce((sum, society) => sum + Number.parseFloat(String(society.budget ?? 0)), 0);
     }
 
@@ -324,7 +324,7 @@ const Dashboard: React.FC = () => {
               <p className="text-muted-foreground mb-2">&gt; SYNCHRONIZING DASHBOARD COUNTERS...</p>
               <p className="text-white">
                 {hasTransactionAccess
-                  ? 'Management view shows branch-wide inflow, outflow, balance, and utilization based on transaction records.'
+                  ? 'SB Faculty/OB view shows branch-wide inflow, outflow, balance, and utilization based on transaction records.'
                   : hasBalanceAccess
                     ? 'Society-scoped roles are limited to balance and utilization summaries while line-item income and expense stay restricted.'
                     : 'Member access excludes financial line items. Dashboard financial cards remain restricted by design.'}

@@ -1,17 +1,12 @@
 import { Router } from 'express';
-import { verifyToken } from '../middleware/verifyToken';
+import { verifyToken, SUPER_ADMIN_ROLES, APPROVER_ROLES, TRANSACTION_CREATE_ROLES } from '../middleware/verifyToken';
 import { requireRole } from '../middleware/requireRole';
 import { requireSocietyAccess } from '../middleware/requireSocietyAccess';
 import { filterFinancialData } from '../middleware/filterFinancialData';
 import { restrictTransactions } from '../middleware/restrictTransactions';
-import { Role } from '@prisma/client';
 import {
-  getTransactions,
-  getBalance,
-  createTransaction,
-  updateTransaction,
-  deleteTransaction,
-  approveTransaction
+  getTransactions, getBalance, createTransaction,
+  updateTransaction, deleteTransaction, approveTransaction
 } from '../controllers/transactionController';
 
 const router = Router();
@@ -19,45 +14,22 @@ const router = Router();
 router.use(verifyToken);
 router.use(filterFinancialData);
 
-// IMPORTANT: GET /balance must be declared BEFORE GET / to avoid being caught by wildcard pattern matching
-// GET /api/transactions/balance - Legacy balance route retained for compatibility
+// GET /balance — all roles with society access can see their balance
 router.get('/balance', getBalance);
 
-// GET /api/transactions - Fetch all transaction line items (MANAGEMENT only after financial filtering)
-router.get(
-  '/',
-  restrictTransactions,
-  getTransactions
-);
+// GET / — super admins only (SB_FACULTY, SB_OB)
+router.get('/', restrictTransactions, getTransactions);
 
-// POST /api/transactions - Create new transaction (MANAGEMENT, FACULTY_ADVISOR, SOCIETY_OB)
-router.post(
-  '/',
-  requireRole([Role.MANAGEMENT, Role.FACULTY_ADVISOR, Role.SOCIETY_OB]),
-  requireSocietyAccess(),
-  createTransaction
-);
+// POST / — SB_FACULTY, SB_OB, SOCIETY_FACULTY, SOCIETY_CHAIR can create
+router.post('/', requireRole(TRANSACTION_CREATE_ROLES), requireSocietyAccess(), createTransaction);
 
-// PATCH /api/transactions/:id/approve - Approve transaction (MANAGEMENT only)
-router.patch(
-  '/:id/approve',
-  requireRole([Role.MANAGEMENT]),
-  approveTransaction
-);
+// PATCH /:id/approve — SB_FACULTY, SB_OB, SOCIETY_FACULTY can approve
+router.patch('/:id/approve', requireRole(APPROVER_ROLES), approveTransaction);
 
-// PUT /api/transactions/:id - Update transaction (MANAGEMENT, FACULTY_ADVISOR, SOCIETY_OB)
-router.put(
-  '/:id',
-  requireRole([Role.MANAGEMENT, Role.FACULTY_ADVISOR, Role.SOCIETY_OB]),
-  requireSocietyAccess(),
-  updateTransaction
-);
+// PUT /:id — same as create
+router.put('/:id', requireRole(TRANSACTION_CREATE_ROLES), requireSocietyAccess(), updateTransaction);
 
-// DELETE /api/transactions/:id - Delete transaction (MANAGEMENT only)
-router.delete(
-  '/:id',
-  requireRole([Role.MANAGEMENT]),
-  deleteTransaction
-);
+// DELETE /:id — super admins only
+router.delete('/:id', requireRole(SUPER_ADMIN_ROLES), deleteTransaction);
 
 export default router;

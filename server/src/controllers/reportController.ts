@@ -1,8 +1,10 @@
-import { NextFunction, Response } from 'express';
-import { PrismaClient, Role } from '@prisma/client';
-import { AuthRequest } from '../middleware/verifyToken';
+import { Response, NextFunction } from 'express';
+import { PrismaClient } from '@prisma/client';
+import { AuthRequest, SUPER_ADMIN_ROLES } from '../middleware/verifyToken';
 import { AppError } from '../middleware/errorHandler';
 import { generateSystemSnapshot } from '../services/snapshotService';
+
+const isSuperAdmin = (req: AuthRequest) => SUPER_ADMIN_ROLES.includes(req.user!.role);
 
 const prisma = new PrismaClient();
 

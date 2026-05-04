@@ -1,18 +1,13 @@
 import { Response, NextFunction } from 'express';
-import { AuthRequest } from './verifyToken';
-import { Role } from '@prisma/client';
+import { AuthRequest, SUPER_ADMIN_ROLES } from './verifyToken';
 import { AppError } from './errorHandler';
 
 export const requireSocietyAccess = () => {
   return (req: AuthRequest, _res: Response, next: NextFunction) => {
-    if (!req.user) {
-      return next(new AppError('Unauthorized', 401));
-    }
+    if (!req.user) return next(new AppError('Unauthorized', 401));
 
-    // Management has global access
-    if (req.user.role === Role.MANAGEMENT) {
-      return next();
-    }
+    // Super admins have global access
+    if (SUPER_ADMIN_ROLES.includes(req.user.role)) return next();
 
     const routeSocietyId = req.params.societyId;
     const bodySocietyId = req.body?.societyId;
@@ -28,9 +23,7 @@ export const requireSocietyAccess = () => {
       requestedSocietyId = requestedSocietyIdValue;
     }
 
-    if (!requestedSocietyId) {
-      return next(); // If no societyId specified in request, let the controller handle it or it's a general request
-    }
+    if (!requestedSocietyId) return next();
 
     if (req.user.societyId !== requestedSocietyId) {
       return next(new AppError('Forbidden: You do not have access to this society', 403));

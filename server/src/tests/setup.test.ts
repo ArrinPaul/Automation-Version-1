@@ -116,7 +116,7 @@ describe('Setup Endpoint Tests', () => {
     expect(res.body).toHaveProperty('user');
     expect(res.body).toHaveProperty('session');
     expect(res.body.user.email).toBe('admin@ieee.org');
-    expect(res.body.user.role).toBe('MANAGEMENT');
+    expect(res.body.user.role).toBe('SB_FACULTY');
     expect(res.body.session).toHaveProperty('access_token');
     expect(res.body.session).toHaveProperty('refresh_token');
   });

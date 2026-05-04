@@ -1,7 +1,7 @@
 import { Response, NextFunction } from 'express';
 import { generateFinancialAudit } from '../services/geminiService';
-import { PrismaClient, Role } from '@prisma/client';
-import { AuthRequest } from '../middleware/verifyToken';
+import { PrismaClient } from '@prisma/client';
+import { AuthRequest, SUPER_ADMIN_ROLES } from '../middleware/verifyToken';
 import { AppError } from '../middleware/errorHandler';
 import { auditLogRepository } from '../repositories/auditLogRepository';
 
@@ -32,14 +32,14 @@ const getRequestedSocietyId = (req: AuthRequest) => {
 
 const resolveAuditScope = (req: AuthRequest) => {
   const requestedSocietyId = getRequestedSocietyId(req);
-  const isManagement = req.user?.role === Role.MANAGEMENT;
-  const targetSocietyId = isManagement ? requestedSocietyId : req.user?.societyId ?? undefined;
+  const isSuperAdmin = SUPER_ADMIN_ROLES.includes(req.user!.role);
+  const targetSocietyId = isSuperAdmin ? requestedSocietyId : req.user?.societyId ?? undefined;
 
-  if (!isManagement && !targetSocietyId) {
+  if (!isSuperAdmin && !targetSocietyId) {
     throw new AppError('Forbidden: Society access required for audit generation', 403);
   }
 
-  if (!isManagement && targetSocietyId && targetSocietyId !== req.user?.societyId) {
+  if (!isSuperAdmin && targetSocietyId && targetSocietyId !== req.user?.societyId) {
     throw new AppError('Forbidden: You do not have access to this society audit', 403);
   }
 

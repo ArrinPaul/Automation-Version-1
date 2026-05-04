@@ -28,25 +28,25 @@ Set-Location ..
 
 # Step 3: Start both servers
 Write-Host "`n[3/3] Starting API server (port 5000) and client (port 5173)..." -ForegroundColor Yellow
-Write-Host "      Press Ctrl+C to stop all processes`n" -ForegroundColor Gray
+Write-Host "      Press Ctrl+C to stop all processes" -ForegroundColor Gray
 
 $serverJob = Start-Job -ScriptBlock {
-    Set-Location "d:\IEEESBAPP\server"
+    Set-Location "d:\Projects\Automation-Version-1\server"
     npm run dev 2>&1
 }
 
 $clientJob = Start-Job -ScriptBlock {
-    Set-Location "d:\IEEESBAPP\client"
+    Set-Location "d:\Projects\Automation-Version-1\client"
     npm run dev 2>&1
 }
 
 Write-Host "✅ Server: http://localhost:5000/api/health" -ForegroundColor Green
 Write-Host "✅ Client: http://localhost:5173" -ForegroundColor Green
-Write-Host "   Setup Key: ieee-dev-setup-key-2026`n" -ForegroundColor Cyan
+Write-Host "   Setup Key: ieee-dev-setup-key-2026" -ForegroundColor Cyan
 
 # Stream output from both jobs
 while ($true) {
-    Receive-Job $serverJob | ForEach-Object { Write-Host "[SERVER] $_" -ForegroundColor Blue }
-    Receive-Job $clientJob | ForEach-Object { Write-Host "[CLIENT] $_" -ForegroundColor Magenta }
+    Receive-Job $serverJob | ForEach-Object { Write-Host "[SERVER] " -NoNewline; Write-Host $_ -ForegroundColor Blue }
+    Receive-Job $clientJob | ForEach-Object { Write-Host "[CLIENT] " -NoNewline; Write-Host $_ -ForegroundColor Magenta }
     Start-Sleep -Milliseconds 500
 }

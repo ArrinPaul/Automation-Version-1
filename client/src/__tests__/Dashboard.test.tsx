@@ -5,7 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 vi.mock('../context/AuthContext', () => ({
   useAuth: () => ({
-    profile: { name: 'Test User', role: 'MANAGEMENT', society: { balance: 5000 } },
+    profile: { name: 'Test User', role: 'SB_FACULTY', society: { balance: 5000 } },
     loading: false
   })
 }));

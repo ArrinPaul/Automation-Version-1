@@ -1,20 +1,18 @@
 import { NextFunction, Response } from 'express';
-import { Role } from '@prisma/client';
-import { AuthRequest } from '../middleware/verifyToken';
+import { AuthRequest, SUPER_ADMIN_ROLES } from '../middleware/verifyToken';
 import { speakerRepository } from '../repositories/speakerRepository';
 import { eventRepository } from '../repositories/eventRepository';
 import { AppError } from '../middleware/errorHandler';
 
 const hasSocietyAccess = (req: AuthRequest, societyId?: string | null) => {
-  if (req.user?.role === Role.MANAGEMENT) return true;
+  if (SUPER_ADMIN_ROLES.includes(req.user!.role)) return true;
   return !!req.user?.societyId && req.user.societyId === societyId;
 };
 
 export const getSpeakers = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const where: any = {};
-
-    if (req.user?.role !== Role.MANAGEMENT && req.user?.societyId) {
+    if (!SUPER_ADMIN_ROLES.includes(req.user!.role) && req.user?.societyId) {
       where.event = { societyId: req.user.societyId };
     }
 

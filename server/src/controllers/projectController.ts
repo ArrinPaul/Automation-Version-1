@@ -1,10 +1,12 @@
 import { Response, NextFunction } from 'express';
 import { Role, ProjectCategory, ProjectStatus } from '@prisma/client';
-import { AuthRequest } from '../middleware/verifyToken';
+import { AuthRequest, SUPER_ADMIN_ROLES } from '../middleware/verifyToken';
 import { AppError } from '../middleware/errorHandler';
 import { projectRepository } from '../repositories/projectRepository';
 import { z } from 'zod';
 import { Decimal } from '@prisma/client/runtime/library';
+
+const isSuperAdmin = (req: AuthRequest) => SUPER_ADMIN_ROLES.includes(req.user!.role);
 
 /**
  * Validates amount as a positive decimal.
@@ -39,7 +41,7 @@ const projectUpdateSchema = projectSchema.partial();
 export const getProjects = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const where: any = {};
-    if (req.user?.role !== Role.MANAGEMENT && req.user?.societyId) {
+    if (!isSuperAdmin(req) && req.user?.societyId) {
       where.societyId = req.user.societyId;
     }
 
@@ -68,7 +70,7 @@ export const getProjectById = async (req: AuthRequest, res: Response, next: Next
       return next(new AppError('Project not found', 404));
     }
 
-    if (req.user?.role !== Role.MANAGEMENT && project.societyId !== req.user?.societyId) {
+    if (!isSuperAdmin(req) && project.societyId !== req.user?.societyId) {
       return next(new AppError('Forbidden: You do not have access to this project', 403));
     }
 
@@ -118,7 +120,7 @@ export const updateProject = async (req: AuthRequest, res: Response, next: NextF
       return next(new AppError('User not authenticated', 401));
     }
 
-    if (req.user.role !== Role.MANAGEMENT) {
+    if (!isSuperAdmin(req)) {
       const existingProject = await projectRepository.findById(projectId);
       if (!existingProject) {
         return next(new AppError('Project not found', 404));
@@ -164,7 +166,7 @@ export const deleteProject = async (req: AuthRequest, res: Response, next: NextF
       return next(new AppError('User not authenticated', 401));
     }
 
-    if (req.user.role !== Role.MANAGEMENT) {
+    if (!isSuperAdmin(req)) {
       const existingProject = await projectRepository.findById(projectId);
       if (!existingProject) {
         return next(new AppError('Project not found', 404));

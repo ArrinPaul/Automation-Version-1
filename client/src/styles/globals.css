@@ -36,6 +36,44 @@
     background-color: #0A0A0C;
     background-image: radial-gradient(circle at 50% 50%, rgba(0, 98, 155, 0.05) 0%, transparent 50%);
   }
+
+  /* Force dark backgrounds on all form elements — overrides browser defaults */
+  input,
+  textarea,
+  select {
+    background-color: rgba(255, 255, 255, 0.04) !important;
+    color: #ffffff !important;
+    color-scheme: dark;
+  }
+
+  /* Kill browser autofill yellow/white flash */
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus,
+  input:-webkit-autofill:active,
+  textarea:-webkit-autofill,
+  select:-webkit-autofill {
+    -webkit-box-shadow: 0 0 0 1000px #1a2035 inset !important;
+    -webkit-text-fill-color: #ffffff !important;
+    caret-color: #ffffff;
+    transition: background-color 9999s ease-in-out 0s;
+  }
+
+  /* Select element arrow color */
+  select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='rgba(255,255,255,0.4)' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    padding-right: 28px !important;
+    appearance: none;
+    -webkit-appearance: none;
+  }
+
+  /* Date input calendar icon */
+  input[type="date"]::-webkit-calendar-picker-indicator {
+    filter: invert(0.6);
+    cursor: pointer;
+  }
 }
 
 .technical-grid {

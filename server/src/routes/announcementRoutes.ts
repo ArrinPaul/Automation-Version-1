@@ -1,15 +1,10 @@
 import { Router } from 'express';
-import { Role } from '@prisma/client';
-import { verifyToken } from '../middleware/verifyToken';
+import { verifyToken, SUPER_ADMIN_ROLES, SOCIETY_OPS_ROLES } from '../middleware/verifyToken';
 import { requireRole } from '../middleware/requireRole';
 import { requireSocietyAccess } from '../middleware/requireSocietyAccess';
 import {
-  getAnnouncements,
-  getAnnouncementById,
-  getAnnouncementRecipients,
-  createAnnouncement,
-  updateAnnouncement,
-  deleteAnnouncement
+  getAnnouncements, getAnnouncementById, getAnnouncementRecipients,
+  createAnnouncement, updateAnnouncement, deleteAnnouncement
 } from '../controllers/announcementController';
 
 const router = Router();
@@ -20,25 +15,8 @@ router.get('/', getAnnouncements);
 router.get('/:id/recipients', getAnnouncementRecipients);
 router.get('/:id', getAnnouncementById);
 
-router.post(
-  '/',
-  requireRole([Role.MANAGEMENT, Role.FACULTY_ADVISOR, Role.SOCIETY_OB]),
-  requireSocietyAccess(),
-  createAnnouncement
-);
-
-router.put(
-  '/:id',
-  requireRole([Role.MANAGEMENT, Role.FACULTY_ADVISOR, Role.SOCIETY_OB]),
-  requireSocietyAccess(),
-  updateAnnouncement
-);
-
-router.delete(
-  '/:id',
-  requireRole([Role.MANAGEMENT, Role.FACULTY_ADVISOR]),
-  requireSocietyAccess(),
-  deleteAnnouncement
-);
+router.post('/', requireRole(SOCIETY_OPS_ROLES), requireSocietyAccess(), createAnnouncement);
+router.put('/:id', requireRole(SOCIETY_OPS_ROLES), requireSocietyAccess(), updateAnnouncement);
+router.delete('/:id', requireRole(SUPER_ADMIN_ROLES), requireSocietyAccess(), deleteAnnouncement);
 
 export default router;

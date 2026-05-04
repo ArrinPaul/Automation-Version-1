@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { verifyToken } from '../middleware/verifyToken';
+import { verifyToken, SUPER_ADMIN_ROLES } from '../middleware/verifyToken';
 import { requireRole } from '../middleware/requireRole';
 import { requireSocietyAccess } from '../middleware/requireSocietyAccess';
 import { filterFinancialData } from '../middleware/filterFinancialData';
@@ -8,41 +8,19 @@ import { getSocieties, createSociety, getSocietyById, getSocietyBalance, updateS
 
 const router = Router();
 
-// GET /api/societies - Fetch all societies (with financial data filtering)
+// GET / — all authenticated users (financial data filtered per role)
 router.get('/', verifyToken, filterFinancialData, getSocieties);
 
-// POST /api/societies - Create new society (MANAGEMENT only)
-router.post(
-  '/',
-  verifyToken,
-  requireRole([Role.MANAGEMENT]),
-  createSociety
-);
+// POST / — super admins only
+router.post('/', verifyToken, requireRole(SUPER_ADMIN_ROLES), createSociety);
 
-// GET /api/societies/:id - Fetch society by ID (with financial data filtering)
-router.get(
-  '/:id/balance',
-  verifyToken,
-  requireSocietyAccess(),
-  getSocietyBalance
-);
+// GET /:id/balance — society-scoped roles + super admins
+router.get('/:id/balance', verifyToken, requireSocietyAccess(), getSocietyBalance);
 
-// GET /api/societies/:id - Fetch society by ID (with financial data filtering)
-router.get(
-  '/:id',
-  verifyToken,
-  requireSocietyAccess(),
-  filterFinancialData,
-  getSocietyById
-);
+// GET /:id — society-scoped + super admins
+router.get('/:id', verifyToken, requireSocietyAccess(), filterFinancialData, getSocietyById);
 
-// PUT /api/societies/:id - Update society (MANAGEMENT, FACULTY_ADVISOR)
-router.put(
-  '/:id',
-  verifyToken,
-  requireRole([Role.MANAGEMENT, Role.FACULTY_ADVISOR]),
-  requireSocietyAccess(),
-  updateSociety
-);
+// PUT /:id — SB_FACULTY, SB_OB, SOCIETY_FACULTY can update their society
+router.put('/:id', verifyToken, requireRole([Role.SB_FACULTY, Role.SB_OB, Role.SOCIETY_FACULTY]), requireSocietyAccess(), updateSociety);
 
 export default router;

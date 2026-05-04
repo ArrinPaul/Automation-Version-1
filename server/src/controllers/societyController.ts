@@ -1,11 +1,13 @@
 import { Response, NextFunction } from 'express';
 import { societyRepository } from '../repositories/societyRepository';
-import { AuthRequest } from '../middleware/verifyToken';
+import { AuthRequest, SUPER_ADMIN_ROLES } from '../middleware/verifyToken';
 import { Role, SocietyType } from '@prisma/client';
 import { AppError } from '../middleware/errorHandler';
 import { z } from 'zod';
 import { Decimal } from '@prisma/client/runtime/library';
 import { transactionRepository } from '../repositories/transactionRepository';
+
+const isSuperAdmin = (req: AuthRequest) => SUPER_ADMIN_ROLES.includes(req.user!.role);
 
 /**
  * Validates amount as a positive decimal.
@@ -35,7 +37,7 @@ const societyUpdateSchema = societySchema.partial();
 export const getSocieties = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const where: any = {};
-    if (req.user?.role !== Role.MANAGEMENT && req.user?.societyId) {
+    if (!isSuperAdmin(req) && req.user?.societyId) {
       where.id = req.user.societyId;
     }
     const societies = await societyRepository.findAll(where);
@@ -137,7 +139,7 @@ export const getSocietyBalance = async (req: AuthRequest, res: Response, next: N
     return next(new AppError('Members are not permitted to access financial data routes.', 403));
   }
 
-  if (req.user.role !== Role.MANAGEMENT && req.user.societyId !== id) {
+  if (!isSuperAdmin(req) && req.user.societyId !== id) {
     return next(new AppError('You do not have access to view this society balance', 403));
   }
 
